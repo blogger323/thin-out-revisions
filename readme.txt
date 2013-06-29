@@ -96,6 +96,9 @@ So some options became needless.
 
 == Changelog ==
 
+= 1.3.1 - July 2013 =
+* No warning on records other than pages and posts (WP 3.6)
+
 = 1.3 - Jun 2, 2013 =
 * WordPress 3.6 compliant. WP 3.6 users have to upgrade to this version. Also WP 3.5 users can use this version.
 
@@ -114,7 +117,7 @@ So some options became needless.
 * Added the 'Delete revisions on initial publication' feature
 * The result message after deleting revisions is now colored
 
-= 1.0 - Nov 11, 2012=
+= 1.0 - Nov 11, 2012 =
 * The version number is now 1.0. Though it's not a substantial change, many people will feel it sounds very formal.
 * Better visual effects on deleted revisions. Now you can easily identify them.
 * [Bug fix] The number of deleted revisions is corrected to show a real deleted number.

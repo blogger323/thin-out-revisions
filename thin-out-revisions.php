@@ -3,7 +3,7 @@
 Plugin Name: Thin Out Revisions
 Plugin URI: http://en.hetarena.com/thin-out-revisions
 Description: A plugin to thin out post/page revisions manually.
-Version: 1.3
+Version: 1.3.1
 Author: Hirokazu Matsui (blogger323)
 Author URI: http://en.hetarena.com/
 License: GPLv2
@@ -11,7 +11,7 @@ License: GPLv2
 
 
 class HM_TOR_Plugin_Loader {
-	const VERSION        = '1.3';
+	const VERSION        = '1.3.1';
 	const OPTION_VERSION = '1.1';
 	const OPTION_KEY     = 'hm_tor_options';
 	const I18N_DOMAIN    = 'thin-out-revisions';
@@ -181,7 +181,7 @@ class HM_TOR_Plugin_Loader {
 	function admin_notices() {
 		global $post;
 		$rev = wp_get_post_revisions( $post->ID );
-		if ( empty( $rev ) ) {
+		if ( post_type_supports( $post->post_type, 'revisions' ) && empty( $rev ) ) {
 			echo "<div class='updated' style='padding: 0.6em 0.6em'>" .
 					__( 'You should press update button without modification to make a copy revision. Or you will lose current content after update.', self::I18N_DOMAIN ) .
 					" <a href='" . __("http://wordpress.org/plugins/thin-out-revisions/faq/", self::I18N_DOMAIN) . "' target='_blank'>" .
