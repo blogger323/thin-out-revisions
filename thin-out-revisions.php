@@ -82,7 +82,8 @@ class HM_TOR_Plugin_Loader {
 			'msg_thinout_comfirmation' => esc_attr( __( 'You really remove?', self::I18N_DOMAIN ) ),
 			'msg_remove_completed'     => esc_attr( __( 'The revision(s) removed.', self::I18N_DOMAIN ) ),
 			'msg_ajax_error'           => esc_attr( __( 'Error in communication with server', self::I18N_DOMAIN ) ),
-			'msg_nothing_to_remove'    => esc_attr( __( 'Nothing to remove.' ) )
+			'msg_nothing_to_remove'    => esc_attr( __( 'Nothing to remove.', self::I18N_DOMAIN ) ),
+			'msg_thin_out'             => esc_attr( __( 'Remove revisions between two revisions above', self::I18N_DOMAIN ) )
 		);
 
 		if ( $this->page == 'revision.php' ) {
@@ -452,8 +453,7 @@ class HM_TOR_RevisionMemo_Loader {
 		// Build user interface
 		add_action( 'add_meta_boxes', array( &$this, 'add_meta_box' ) );
 
-		// Call update_post_meta() after post/page saved
-		// update_post_meta() creates a new entry if the key doesn't exist.
+		// Add metadata to a revisions to be saved
 		add_action( 'save_post', array( &$this, 'save_post' ) );
 
 		// Showing text input area for memo in revision.php.
@@ -486,7 +486,7 @@ class HM_TOR_RevisionMemo_Loader {
       "
 		);
 
-		$postmemo = get_post_meta( $post->ID, "_hm_tor_memo", true );
+		$postmemo = get_post_meta( $post->ID, "_hm_tor_memo", true ); // keep this line for pre 3.6 posts
 
 		if ( ! $memos && ! $postmemo ) {
 			return;
@@ -504,7 +504,7 @@ class HM_TOR_RevisionMemo_Loader {
 			};
 			jQuery(document).ready(function () {
 				jQuery('.post-revisions a').each(function () {
-					var parse_url = /(post|revision)=([0-9]+)&action=edit/;
+					var parse_url = /(post|revision)=([0-9]+)/;
 					var result = parse_url.exec(jQuery(this).attr('href'));
 					if (result && memos[result[2]]) {
 						<?php
@@ -536,7 +536,7 @@ class HM_TOR_RevisionMemo_Loader {
 	function hm_tor_mbfunction( $post ) {
 		wp_nonce_field( plugin_basename( __FILE__ ), 'hm_tor_nonce' );
 		$memo = ''; // always empty
-		echo __( "Memo: ", "thin-out-revisions" );
+		echo __( "Memo: ", self::I18N_DOMAIN );
 		?>
 		<input type="text" name="hm_tor_memo" value="<?php echo esc_attr( $memo ); ?>" style="width: 300px;" />
 		<span id="hm_tor_memo_current"></span>
@@ -547,20 +547,24 @@ class HM_TOR_RevisionMemo_Loader {
 	function save_post( $post_id ) {
 		global $wpdb;
 
-		if ( wp_is_post_revision( $post_id ) ) {
-			if ( ( $parent = $wpdb->get_col( $wpdb->prepare( "SELECT post_parent FROM $wpdb->posts WHERE ID = '%s'", $post_id ) ) ) ) {
-				foreach ( (array) $parent as $p ) {
-					$wpdb->query( $wpdb->prepare( "UPDATE $wpdb->postmeta SET post_id = '%s'  WHERE post_id = '%s' AND meta_key = '_hm_tor_memo' ", $post_id, $p ) );
-				}
+		if ( $parent = wp_is_post_revision( $post_id ) ) {
+
+			$revisions = wp_get_post_revisions( $parent );
+			if ( count( $revisions ) <= 1 ) { // making the first revision
+				// If the parent has a memo (made in pre 3.6 ver.), attach it to the revision.
+				$wpdb->query( $wpdb->prepare( "UPDATE $wpdb->postmeta SET post_id = '%s'  WHERE post_id = '%s' AND meta_key = '_hm_tor_memo' ", $post_id, $parent ) );
 			}
-		}
-		else {
+			else {
+				$wpdb->query( $wpdb->prepare( "DELETE FROM $wpdb->postmeta WHERE post_id = '%s' AND meta_key = '_hm_tor_memo' ", $parent) );
+			}
+
 			if ( isset( $_POST['hm_tor_nonce'] ) && wp_verify_nonce( $_POST['hm_tor_nonce'], plugin_basename( __FILE__ ) ) &&
 					isset( $_POST['hm_tor_memo'] ) && $_POST['hm_tor_memo'] !== '' &&
 					( ( $_POST['post_type'] == 'post' && current_user_can( 'edit_post', $post_id ) )
 							|| ( $_POST['post_type'] == 'page' && current_user_can( 'edit_page', $post_id ) ) )
 			) {
-				update_post_meta( $post_id, '_hm_tor_memo', sanitize_text_field( $_POST['hm_tor_memo'] ) );
+				// We cannot use update_post_meta for revisions because it will add metadata to the parent.
+				update_metadata('post', $post_id, '_hm_tor_memo', sanitize_text_field( $_POST['hm_tor_memo'] ));
 			}
 		}
 	}
