@@ -447,8 +447,11 @@ class HM_TOR_RevisionMemo_Loader {
 	const I18N_DOMAIN = 'thin-out-revisions';
 	const PREFIX      = 'hm_tor_';
 
+	private $no_new_revision  = false;
+	private $last_revision_id = 0;
+
 	// Constructor
-	function HM_TOR_RevisionMemo_Loader() {
+	function __construct() {
 
 		// Build user interface
 		add_action( 'add_meta_boxes', array( &$this, 'add_meta_box' ) );
@@ -458,6 +461,8 @@ class HM_TOR_RevisionMemo_Loader {
 
 		// Showing text input area for memo in revision.php.
 		add_action( 'admin_head', array( &$this, 'admin_head' ) );
+
+		add_filter( 'wp_save_post_revision_check_for_changes', array( &$this, 'wp_save_post_revision_check_for_changes' ), 200, 3 );
 	}
 
 	function admin_head() {
@@ -547,39 +552,94 @@ class HM_TOR_RevisionMemo_Loader {
 	function save_post( $post_id ) {
 		global $wpdb;
 
-		if ( $parent = wp_is_post_revision( $post_id ) ) {
+		if ( isset( $_POST['hm_tor_nonce'] ) && wp_verify_nonce( $_POST['hm_tor_nonce'], plugin_basename( __FILE__ ) ) &&
+				isset( $_POST['hm_tor_memo'] ) && $_POST['hm_tor_memo'] !== '' &&
+				( ( $_POST['post_type'] == 'post' && current_user_can( 'edit_post', $post_id ) )
+						|| ( $_POST['post_type'] == 'page' && current_user_can( 'edit_page', $post_id ) ) )
+		) {
+			if ( $parent = wp_is_post_revision( $post_id ) ) { // saving a revision
 
-			$revisions = wp_get_post_revisions( $parent );
-			if ( count( $revisions ) <= 1 ) { // making the first revision
-				// If the parent has a memo (made in pre 3.6 ver.), attach it to the revision.
-				$wpdb->query( $wpdb->prepare( "UPDATE $wpdb->postmeta SET post_id = '%s'  WHERE post_id = '%s' AND meta_key = '_hm_tor_memo' ", $post_id, $parent ) );
+				$revisions = wp_get_post_revisions( $parent );
+				if ( count( $revisions ) <= 1 ) { // making the first revision
+					// If the parent has a memo (made in pre 3.6 ver.), attach it to the revision.
+					$wpdb->query( $wpdb->prepare( "UPDATE $wpdb->postmeta SET post_id = '%s'  WHERE post_id = '%s' AND meta_key = '_hm_tor_memo' ", $post_id, $parent ) );
+				}
+				else {
+					// In WP3.6, we don't need a memo for the post bacause it has a copy revision.
+					$wpdb->query( $wpdb->prepare( "DELETE FROM $wpdb->postmeta WHERE post_id = '%s' AND meta_key = '_hm_tor_memo' ", $parent) );
+				}
+				// We cannot use update_post_meta for revisions because it will add metadata to the parent.
+				update_metadata( 'post', $post_id, '_hm_tor_memo', sanitize_text_field( $_POST['hm_tor_memo'] ) );
 			}
-			else {
-				$wpdb->query( $wpdb->prepare( "DELETE FROM $wpdb->postmeta WHERE post_id = '%s' AND meta_key = '_hm_tor_memo' ", $parent) );
-			}
+			else { // saving a post
 
+				if ( $this->no_new_revision ) {
+					// Attach the new memo to the latest revision
+					update_metadata( 'post', $this->last_revision_id, '_hm_tor_memo', sanitize_text_field( $_POST['hm_tor_memo'] ) );
+				}
+			}
+		} // if ( isset ...
+	}
+
+	function wp_save_post_revision_check_for_changes( $val, $last_revision, $post) {
+		// code from revision.php
+		$post_has_changed = false;
+
+		foreach ( array_keys( _wp_post_revision_fields() ) as $field ) {
+			if ( normalize_whitespace( $post->$field ) != normalize_whitespace( $last_revision->$field ) ) {
+				$post_has_changed = true;
+				break;
+			}
+		}
+
+		$this->no_new_revision  = ( ( ! $post_has_changed ) && $val );
+		$this->last_revision_id = $last_revision->ID;
+
+		return $val;
+	}
+
+} // end of 'HM_TOR_RevisionMemo_Loader
+
+// a class for WP 3.5
+class HM_TOR_RevisionMemo_Loader_3_5 extends HM_TOR_RevisionMemo_Loader {
+
+	function __construct() {
+		parent::__construct();
+	}
+
+	function save_post( $post_id ) {
+		global $wpdb;
+
+		if ( wp_is_post_revision( $post_id ) ) {
+			if ( ( $parent = $wpdb->get_col( $wpdb->prepare( "SELECT post_parent FROM $wpdb->posts WHERE ID = '%s'", $post_id ) ) ) ) {
+				foreach ( (array) $parent as $p ) {
+					$wpdb->query( $wpdb->prepare( "UPDATE $wpdb->postmeta SET post_id = '%s' WHERE post_id = '%s' AND meta_key = '_hm_tor_memo' ", $post_id, $p ) );
+				}
+			}
+		}
+		else {
 			if ( isset( $_POST['hm_tor_nonce'] ) && wp_verify_nonce( $_POST['hm_tor_nonce'], plugin_basename( __FILE__ ) ) &&
 					isset( $_POST['hm_tor_memo'] ) && $_POST['hm_tor_memo'] !== '' &&
 					( ( $_POST['post_type'] == 'post' && current_user_can( 'edit_post', $post_id ) )
 							|| ( $_POST['post_type'] == 'page' && current_user_can( 'edit_page', $post_id ) ) )
 			) {
-				// We cannot use update_post_meta for revisions because it will add metadata to the parent.
-				update_metadata('post', $post_id, '_hm_tor_memo', sanitize_text_field( $_POST['hm_tor_memo'] ));
+				update_post_meta( $post_id, '_hm_tor_memo', sanitize_text_field( $_POST['hm_tor_memo'] ) );
 			}
 		}
 	}
 
-} // end of 'HM_TOR_RevisionMemo_Loader
-
+}
 
 $hm_tor_plugin_loader = null;
+$hm_tor_revisionmemo_loader = null;
 
 // Load HM_TOR_Plugin_Loader first.
 if ( version_compare( get_bloginfo( 'version' ), '3.6-alpha' ) >= 0 ) {
 	$hm_tor_plugin_loader = new HM_TOR_Plugin_Loader();
+	$hm_tor_revisionmemo_loader = new HM_TOR_RevisionMemo_Loader();
 }
 else {
 	$hm_tor_plugin_loader = new HM_TOR_Plugin_Loader_3_5();
+	$hm_tor_revisionmemo_loader = new HM_TOR_RevisionMemo_Loader_3_5();
 }
 
-$hm_tor_revisionmemo_loader = new HM_TOR_RevisionMemo_Loader();

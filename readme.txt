@@ -96,8 +96,9 @@ So some options became needless.
 
 == Changelog ==
 
-= 1.3.1 - July 2013 =
-* No warning on records other than pages and posts (WP 3.6)
+= 1.3.1 - July 15, 2013 =
+* Following latest changes in WP 3.6.
+* No improper warnings on records other than pages and posts (WP 3.6).
 
 = 1.3 - Jun 2, 2013 =
 * WordPress 3.6 compliant. WP 3.6 users have to upgrade to this version. Also WP 3.5 users can use this version.

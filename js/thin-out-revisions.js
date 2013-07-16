@@ -64,6 +64,8 @@
 								return false;
 							}
 
+							$('#tor-thin-out').attr('value', 'Processing...').attr('disabled', 'disabled');
+
 							$.ajax({
 								url     : hm_tor_params.ajaxurl,
 								dataType: 'json',
@@ -75,6 +77,7 @@
 							})
 									.success(function (response) {
 								alert(hm_tor_params.msg_remove_completed);
+								//location.replace('./revision.php?from=' + from + '&to=' + to); // it doesn't work...
 								location.replace('./revision.php?revision=' + hm_tor_params.latest_revision);
 							})
 									.error(function () {
