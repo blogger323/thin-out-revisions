@@ -264,7 +264,7 @@ class HM_TOR_Plugin_Loader_3_5 extends HM_TOR_Plugin_Loader {
 
 	function init() {
 		parent::init();
-		// replare the default 'pre_post_update' handler
+		// replace the default 'pre_post_update' handler
 		remove_action( 'pre_post_update', 'wp_save_post_revision' );
 		add_action( 'pre_post_update', array( &$this, 'pre_post_update' ) );
 		add_action( 'admin_head',       array( &$this, 'admin_head' ), 20 );
@@ -462,6 +462,7 @@ class HM_TOR_RevisionMemo_Loader {
 		// Showing text input area for memo in revision.php.
 		add_action( 'admin_head', array( &$this, 'admin_head' ) );
 
+		// from WP3.6
 		add_filter( 'wp_save_post_revision_check_for_changes', array( &$this, 'wp_save_post_revision_check_for_changes' ), 200, 3 );
 	}
 
