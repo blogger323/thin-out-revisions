@@ -3,7 +3,7 @@
 Plugin Name: Thin Out Revisions
 Plugin URI: http://en.hetarena.com/thin-out-revisions
 Description: A plugin to thin out post/page revisions manually.
-Version: 1.3.6
+Version: 1.4
 Author: Hirokazu Matsui (blogger323)
 Author URI: http://en.hetarena.com/
 License: GPLv2
@@ -11,8 +11,8 @@ License: GPLv2
 
 
 class HM_TOR_Plugin_Loader {
-	const VERSION        = '1.3.6';
-	const OPTION_VERSION = '1.1';
+	const VERSION        = '1.4';
+	const OPTION_VERSION = '1.4';
 	const OPTION_KEY     = 'hm_tor_options';
 	const I18N_DOMAIN    = 'thin-out-revisions';
 	const PREFIX         = 'hm_tor_';
@@ -25,8 +25,11 @@ class HM_TOR_Plugin_Loader {
 		add_action( 'plugins_loaded',         array( &$this, 'plugins_loaded' ) );
 		add_action( 'admin_enqueue_scripts',  array( &$this, 'admin_enqueue_scripts' ), 20 );
 		add_action( 'wp_ajax_hm_tor_do_ajax', array( &$this, 'hm_tor_do_ajax' ) );
+		add_action( 'wp_ajax_hm_tor_do_ajax_start_delete_old_revisions', array( &$this, 'do_ajax_start_delete_old_revisions' ) );
 		add_action( 'post_updated',           array( &$this, 'post_updated' ), 20, 3 );
 		add_action( 'transition_post_status', array( &$this, 'transition_post_status' ), 10, 3 );
+
+		add_action( 'hm_tor_cron_hook', array( &$this, 'cron_hook' ) );
 
 		add_action( 'admin_init', array( &$this, 'admin_init' ) );
 		add_action( 'admin_menu', array( &$this, 'admin_menu' ) );
@@ -195,6 +198,9 @@ class HM_TOR_Plugin_Loader {
 		add_settings_field( 'hm_tor_del_on_publish', __( 'Delete all revisions on initial publication', self::I18N_DOMAIN ),
 			array( &$this, 'settings_field_del_on_publish' ), 'hm_tor_option_page', 'hm_tor_main' );
 
+		add_settings_field( 'hm_tor_delete_old_revisions', __( 'Delete revisions older than', self::I18N_DOMAIN ),
+		  array( &$this, 'settings_field_delete_old_revisions' ), 'hm_tor_option_page', 'hm_tor_main' );
+
 		register_setting( 'hm_tor_option_group', 'hm_tor_options', array( &$this, 'validate_options' ) );
 	}
 
@@ -243,6 +249,21 @@ class HM_TOR_Plugin_Loader {
 		$this->settings_field( 'del_on_publish', __( 'Delete all revisions on initial publication', self::I18N_DOMAIN ) );
 	}
 
+	function settings_field_delete_old_revisions() {
+		$v = '3:00';
+
+		echo "<p><input class='regular-text' id='hm_tor_days' name='hm_tor_options[tor_days]' type='text' value='" . esc_attr( '30' ) . "' /> days \n";
+
+		echo '<input id="hm_tor_rm_now_button" class="button button-primary tor-rm" type="submit" value="' . __( 'Remove NOW', self::I18N_DOMAIN )  . '" /><span id="hm_tor_rm_now_msg" style="margin: 0 10px;"></span></p>';
+
+		echo '<fieldset><legend class="screen-reader-text"><span>' . __('Run as scheduled task', self::I18N_DOMAIN) . '</span></legend>' .
+	        '<label for="tor_schedule"><input name="tor_schedule" type="checkbox" id="tor_schedule" value="0"  /> ' .
+	        __('Run as daily task. Run every day at', self::I18N_DOMAIN) . "</label>\n";
+
+		echo  " <input class='regular-text' id='tor_delete_time' name='hm_tor_options[tor_delete_time]' type='text' value='" . esc_attr( $v ) . "' />";
+
+	}
+
 	function validate_options( $input ) {
 		$valid = array();
 
@@ -260,6 +281,44 @@ class HM_TOR_Plugin_Loader {
 
 	function admin_page() {
 		?>
+		<script type="text/javascript">
+			(function($, window, document) {
+
+				$(document).ready(function() {
+
+					$('#hm_tor_rm_now_button').click(function() {
+						// TODO check intval
+						if (! /^[0-9]+$/.test( $('#hm_tor_days').val())) {
+							alert('not integer');
+							return false;
+						}
+						if (!confirm('<?php echo __( "You really remove?", self::I18N_DOMAIN ); ?>')) {
+							return false;
+						}
+						$('#hm_tor_rm_now_msg').html('<?php echo __( 'Processing ...', self::I18N_DOMAIN ); ?>');
+						$.ajax({
+							url: '<?php echo admin_url( 'admin-ajax.php', isset( $_SERVER["HTTPS"] ) ? 'https' : 'http' ); ?>',
+							dataType: 'json',
+							data: {
+								action: 'hm_tor_do_ajax_start_delete_old_revisions',
+								days: $('#hm_tor_days').val(),
+								security: '<?php echo wp_create_nonce( self::PREFIX . "nonce" ); ?>'
+							}
+						})
+						.success (function(response) {
+							$('#hm_tor_rm_now_msg').html(response.msg);
+						})
+						.error (function() {
+							$('#hm_tor_rm_now_msg').html(response.msg);
+						});
+
+						return false;
+					});
+
+				});
+			})(jQuery, window, document);
+		</script>
+
 		<div class="wrap">
 			<?php screen_icon(); ?>
 			<h2>Thin Out Revisions</h2>
@@ -272,6 +331,60 @@ class HM_TOR_Plugin_Loader {
 			</form>
 		</div>
 	<?php
+	}
+
+	function delete_old_revisions( $days ) {
+		global $wpdb;
+
+		$revisions = $wpdb->get_results(
+			"SELECT ID, post_parent, post_name
+      FROM $wpdb->posts
+      WHERE post_type = 'revision' " .
+			"AND DATE_SUB(CURDATE(), INTERVAL " . $days . " DAY) >= post_date "
+			.
+			"ORDER BY post_parent, post_date DESC"
+		); // Both CURDATE and post_date are local time.
+
+		// COPY FROM
+		// refer wp_save_post_revision
+		$parent = 0;
+		foreach ( $revisions as $revision ) {
+			if ( $this->has_copy_revision() && $parent != $revision->post_parent &&
+					false !== strpos( $revision->post_name, "{$revision->post_parent}-revision" ) ) {
+				// avoid autosave
+
+				$parent = $revision->post_parent;
+			}
+			else {
+				// delete revisions
+				// wp_delete_post_revision( $revision->ID );
+				trigger_error( $revision->ID . " removed.");
+			}
+		}
+
+	} // end of bulk_delete
+
+	function do_ajax_start_delete_old_revisions() {
+		if ( check_ajax_referer( self::PREFIX . "nonce", 'security', false ) ) {
+
+			// TODO check days as int
+			wp_schedule_single_event( time(), 'hm_tor_cron_hook', array( intval($_REQUEST['days'] ) ) );
+			echo json_encode( array(
+				"result" => "success",
+				"msg"    => __( "Scheduled ", self::I18N_DOMAIN ) .  $_REQUEST['days'] . " days"
+			) );
+		}
+		else {
+			echo json_encode( array(
+				"result" => "error",
+				"msg"    => __( "Wrong session. Unable to process.", self::I18N_DOMAIN )
+			) );
+		}
+		die();
+	}
+
+	function cron_hook( $days ) {
+		$this->delete_old_revisions( $days );
 	}
 
 } // end of class HM_TOR_Plugin_Loader
