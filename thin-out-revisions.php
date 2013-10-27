@@ -198,7 +198,7 @@ class HM_TOR_Plugin_Loader {
 		add_settings_field( 'hm_tor_del_on_publish', __( 'Delete all revisions on initial publication', self::I18N_DOMAIN ),
 			array( &$this, 'settings_field_del_on_publish' ), 'hm_tor_option_page', 'hm_tor_main' );
 
-		add_settings_field( 'hm_tor_delete_old_revisions', __( 'Delete revisions older than', self::I18N_DOMAIN ),
+		add_settings_field( 'hm_tor_delete_old_revisions', __( 'Delete revisions as old as or older than', self::I18N_DOMAIN ),
 		  array( &$this, 'settings_field_delete_old_revisions' ), 'hm_tor_option_page', 'hm_tor_main' );
 
 		register_setting( 'hm_tor_option_group', 'hm_tor_options', array( &$this, 'validate_options' ) );
@@ -222,10 +222,13 @@ class HM_TOR_Plugin_Loader {
 			'quick_edit'     => "off", // deprecated
 			'bulk_edit'      => "off", // deprecated
 			'del_on_publish' => "off",
+			'del_older_than' => "90",
+			'schedule_enabled' => 'off',
+			'del_at'         => "3:00",
 		);
 
 		// The get_option doesn't seem to merge retrieved values and default values.
-		$options = get_option( 'hm_tor_options', $default_hm_tor_option );
+		$options = array_merge( $default_hm_tor_option, (array) get_option( 'hm_tor_options', array() ) );
 		return $key ? $options[$key] : $options;
 	}
 
@@ -250,23 +253,53 @@ class HM_TOR_Plugin_Loader {
 	}
 
 	function settings_field_delete_old_revisions() {
-		$v = '3:00';
 
-		echo "<p><input class='regular-text' id='hm_tor_days' name='hm_tor_options[tor_days]' type='text' value='" . esc_attr( '30' ) . "' /> days \n";
+		echo "<p><input class='small-text' id='hm_tor_del_older_than' name='hm_tor_options[del_older_than]' type='text' value='" . esc_attr( $this->get_hm_tor_option( 'del_older_than' ) ) . "' /> " . __( 'days', self::I18N_DOMAIN )  . "\n";
 
-		echo '<input id="hm_tor_rm_now_button" class="button button-primary tor-rm" type="submit" value="' . __( 'Remove NOW', self::I18N_DOMAIN )  . '" /><span id="hm_tor_rm_now_msg" style="margin: 0 10px;"></span></p>';
+		echo '<input id="hm_tor_rm_now_button" class="button button-primary" style="margin: 0 10px 0 50px;" type="submit" value="' . __( 'Remove NOW', self::I18N_DOMAIN )  . '" /><span id="hm_tor_rm_now_msg"></span></p>';
 
 		echo '<fieldset><legend class="screen-reader-text"><span>' . __('Run as scheduled task', self::I18N_DOMAIN) . '</span></legend>' .
-	        '<label for="tor_schedule"><input name="tor_schedule" type="checkbox" id="tor_schedule" value="0"  /> ' .
+	        '<label for="hm_tor_schedule_enabled"><input name="hm_tor_options[schedule_enabled]" type="checkbox" id="hm_tor_schedule_enabled" value="enabled" ' .
+				  checked( $this->get_hm_tor_option('schedule_enabled'), 'enabled', false ) . '/> ' .
 	        __('Run as daily task. Run every day at', self::I18N_DOMAIN) . "</label>\n";
 
-		echo  " <input class='regular-text' id='tor_delete_time' name='hm_tor_options[tor_delete_time]' type='text' value='" . esc_attr( $v ) . "' />";
+		echo  " <input class='small-text' id='hm_tor_del_at' name='hm_tor_options[del_at]' type='text' value='" . esc_attr( $this->get_hm_tor_option( 'del_at' ) ) . "' />";
 
 	}
 
 	function validate_options( $input ) {
 		$valid = array();
+		$prev  = $this->get_hm_tor_option();
+		$valid_conf_for_cron = true;
 
+		if ( filter_var( $input['del_older_than'], FILTER_VALIDATE_INT ) === FALSE ) {
+			add_settings_error( 'hm_tor_delete_old_revisions', 'hm-tor-del-older-than-error', __( 'The day has to be an integer.', self::I18N_DOMAIN ) );
+			$valid['del_older_than'] = $prev['del_older_than'];
+			$valid_conf_for_cron = false;
+		}
+		else {
+			$valid['del_older_than'] = $input['del_older_than'];
+		}
+		if ( ! preg_match( '/^[0-9]+:[0-9]+$/', $input['del_at'] ) ) {
+			add_settings_error( 'hm_tor_delete_old_revisions', 'hm-tor-del-at-error', __( 'Wrong time format.', self::I18N_DOMAIN ) );
+			$valid['del_at'] = $prev['del_at'];
+			$valid_conf_for_cron = false;
+		}
+		else {
+			$valid['del_at'] = $input['del_at'];
+		}
+
+		if ( $valid_conf_for_cron && ( isset($input['schedule_enabled']) && $input['schedule_enabled'] == 'enabled' ) ) {
+			$valid['schedule_enabled'] = 'enabled';
+			wp_schedule_event( time() - 3600, 'daily', 'hm_tor_cron_hook', array( intval( $valid['del_older_than'] ) ) );
+		}
+		else {
+			$valid['schedule_enabled'] = 'disabled';
+			if ( wp_next_scheduled( 'hm_tor_cron_hook' ) ) {
+				$timestamp = wp_next_scheduled( 'hm_tor_cron_hook' );
+				wp_unschedule_event( $timestamp, 'hm_tor_cron_hook' );
+			}
+		}
 		$valid['quick_edit']     = ( ( isset($input['quick_edit']) && $input['quick_edit'] == "on" ) ? "on" : "off" );
 		$valid['bulk_edit']      = ( ( isset($input['bulk_edit']) && $input['bulk_edit'] == "on" ) ? "on" : "off" );
 		$valid['del_on_publish'] = ( ( isset($input['del_on_publish']) && $input['del_on_publish'] == "on" ) ? "on" : "off" );
@@ -288,8 +321,8 @@ class HM_TOR_Plugin_Loader {
 
 					$('#hm_tor_rm_now_button').click(function() {
 						// TODO check intval
-						if (! /^[0-9]+$/.test( $('#hm_tor_days').val())) {
-							alert('not integer');
+						if (! /^[0-9]+$/.test( $('#hm_tor_del_older_than').val())) {
+							alert('<?php echo __( 'The day has to be an integer.', self::I18N_DOMAIN ); ?>');
 							return false;
 						}
 						if (!confirm('<?php echo __( "You really remove?", self::I18N_DOMAIN ); ?>')) {
@@ -301,7 +334,7 @@ class HM_TOR_Plugin_Loader {
 							dataType: 'json',
 							data: {
 								action: 'hm_tor_do_ajax_start_delete_old_revisions',
-								days: $('#hm_tor_days').val(),
+								days: $('#hm_tor_del_older_than').val(),
 								security: '<?php echo wp_create_nonce( self::PREFIX . "nonce" ); ?>'
 							}
 						})
@@ -309,7 +342,7 @@ class HM_TOR_Plugin_Loader {
 							$('#hm_tor_rm_now_msg').html(response.msg);
 						})
 						.error (function() {
-							$('#hm_tor_rm_now_msg').html(response.msg);
+							$('#hm_tor_rm_now_msg').html('<?php  __( 'Error in communication with server', self::I18N_DOMAIN ); ?>');
 						});
 
 						return false;
@@ -345,6 +378,8 @@ class HM_TOR_Plugin_Loader {
 			"ORDER BY post_parent, post_date DESC"
 		); // Both CURDATE and post_date are local time.
 
+		trigger_error( 'remove older than ' . $days);
+
 		// COPY FROM
 		// refer wp_save_post_revision
 		$parent = 0;
@@ -371,7 +406,7 @@ class HM_TOR_Plugin_Loader {
 			wp_schedule_single_event( time(), 'hm_tor_cron_hook', array( intval($_REQUEST['days'] ) ) );
 			echo json_encode( array(
 				"result" => "success",
-				"msg"    => __( "Scheduled ", self::I18N_DOMAIN ) .  $_REQUEST['days'] . " days"
+				"msg"    => __( "The task is successfully started. ", self::I18N_DOMAIN ) .  '(' . $_REQUEST['days'] . " " . __( 'days', self::I18N_DOMAIN ) . ")"
 			) );
 		}
 		else {
