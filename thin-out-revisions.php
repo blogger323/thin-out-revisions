@@ -265,12 +265,27 @@ class HM_TOR_Plugin_Loader {
 
 		echo  " <input class='small-text' id='hm_tor_del_at' name='hm_tor_options[del_at]' type='text' value='" . esc_attr( $this->get_hm_tor_option( 'del_at' ) ) . "' />";
 
+		// for debug
+		if ( $this->get_hm_tor_option( 'schedule_enabled' ) == 'enabled' ) {
+			$next = wp_next_scheduled("hm_tor_cron_hook", array( intval( $this->get_hm_tor_option( 'del_older_than' ) ) ) );
+			$t = time();
+			$diff = intval(($next - $t) / 60);
+			echo "<div>" .  __( "The task will begin after", self::I18N_DOMAIN ) . " " . $diff . __( "min.", self::I18N_DOMAIN ) .
+					" (gmt_offset = " . get_option( 'gmt_offset' ) . ")</div>";
+
+		}
 	}
 
 	function validate_options( $input ) {
 		$valid = array();
 		$prev  = $this->get_hm_tor_option();
 		$valid_conf_for_cron = true;
+
+		// reset schedule
+		$timestamp = wp_next_scheduled( 'hm_tor_cron_hook',  array( intval( $prev['del_older_than'] ) ) );
+		if ( $timestamp !== false ) {
+			wp_unschedule_event( $timestamp, 'hm_tor_cron_hook', array( intval( $prev['del_older_than'] ) ) );
+		}
 
 		if ( filter_var( $input['del_older_than'], FILTER_VALIDATE_INT ) === FALSE ) {
 			add_settings_error( 'hm_tor_delete_old_revisions', 'hm-tor-del-older-than-error', __( 'The day has to be an integer.', self::I18N_DOMAIN ) );
@@ -280,26 +295,40 @@ class HM_TOR_Plugin_Loader {
 		else {
 			$valid['del_older_than'] = $input['del_older_than'];
 		}
-		if ( ! preg_match( '/^[0-9]+:[0-9]+$/', $input['del_at'] ) ) {
-			add_settings_error( 'hm_tor_delete_old_revisions', 'hm-tor-del-at-error', __( 'Wrong time format.', self::I18N_DOMAIN ) );
-			$valid['del_at'] = $prev['del_at'];
-			$valid_conf_for_cron = false;
-		}
-		else {
-			$valid['del_at'] = $input['del_at'];
-		}
 
-		if ( $valid_conf_for_cron && ( isset($input['schedule_enabled']) && $input['schedule_enabled'] == 'enabled' ) ) {
-			$valid['schedule_enabled'] = 'enabled';
-			wp_schedule_event( time() - 3600, 'daily', 'hm_tor_cron_hook', array( intval( $valid['del_older_than'] ) ) );
-		}
-		else {
-			$valid['schedule_enabled'] = 'disabled';
-			if ( wp_next_scheduled( 'hm_tor_cron_hook' ) ) {
-				$timestamp = wp_next_scheduled( 'hm_tor_cron_hook' );
-				wp_unschedule_event( $timestamp, 'hm_tor_cron_hook' );
+		$valid['schedule_enabled'] = 'disabled';
+		$valid['del_at'] = $prev['del_at'];
+		if ( isset($input['schedule_enabled']) && $input['schedule_enabled'] == 'enabled' ) {
+
+			if ( ! preg_match( '/^([0-9]{1,2}):([0-9]{2})$/', $input['del_at'], $matches ) ) {
+				add_settings_error( 'hm_tor_delete_old_revisions', 'hm-tor-del-at-error', __( 'Wrong time format.', self::I18N_DOMAIN ) );
+				$valid_conf_for_cron = false;
+			}
+			else {
+				$valid['del_at'] = $input['del_at'];
+				$hour = $matches[1];
+				$min  = $matches[2];
+				trigger_error("INPUT -> " . $hour . ":" . $min);
+			}
+
+			if ( $valid_conf_for_cron  ) {
+				$valid['schedule_enabled'] = 'enabled';
+
+				$now = time();
+				$t = ceil( $now / 86400 ) * 86400 + ($hour - get_option( 'gmt_offset') )  * 3600 + $min * 60;
+
+				while ( $now < $t - 86400) {
+					$t -= 86400;
+				}
+
+				while ( $now > $t ) {
+					$t += 86400;
+				}
+
+				wp_schedule_event( $t, 'daily', 'hm_tor_cron_hook', array( intval( $valid['del_older_than'] ) ) );
 			}
 		}
+
 		$valid['quick_edit']     = ( ( isset($input['quick_edit']) && $input['quick_edit'] == "on" ) ? "on" : "off" );
 		$valid['bulk_edit']      = ( ( isset($input['bulk_edit']) && $input['bulk_edit'] == "on" ) ? "on" : "off" );
 		$valid['del_on_publish'] = ( ( isset($input['del_on_publish']) && $input['del_on_publish'] == "on" ) ? "on" : "off" );
@@ -320,7 +349,6 @@ class HM_TOR_Plugin_Loader {
 				$(document).ready(function() {
 
 					$('#hm_tor_rm_now_button').click(function() {
-						// TODO check intval
 						if (! /^[0-9]+$/.test( $('#hm_tor_del_older_than').val())) {
 							alert('<?php echo __( 'The day has to be an integer.', self::I18N_DOMAIN ); ?>');
 							return false;
@@ -402,11 +430,10 @@ class HM_TOR_Plugin_Loader {
 	function do_ajax_start_delete_old_revisions() {
 		if ( check_ajax_referer( self::PREFIX . "nonce", 'security', false ) ) {
 
-			// TODO check days as int
 			wp_schedule_single_event( time(), 'hm_tor_cron_hook', array( intval($_REQUEST['days'] ) ) );
 			echo json_encode( array(
 				"result" => "success",
-				"msg"    => __( "The task is successfully started. ", self::I18N_DOMAIN ) .  '(' . $_REQUEST['days'] . " " . __( 'days', self::I18N_DOMAIN ) . ")"
+				"msg"    => __( "The task is successfully started. ", self::I18N_DOMAIN ) .  '(' . esc_html( $_REQUEST['days'] ) . " " . __( 'days', self::I18N_DOMAIN ) . ")"
 			) );
 		}
 		else {
