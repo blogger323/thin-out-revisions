@@ -20,7 +20,8 @@ class HM_TOR_Plugin_Loader {
 	public $page = ''; // 'revision.php' or 'post.php'
 
 	function __construct() {
-		register_activation_hook( __FILE__, array( &$this, 'hm_tor_install' ) );
+		register_activation_hook( __FILE__, array( &$this, 'plugin_activation' ) );
+		register_deactivation_hook( __FILE__, array( &$this, 'plugin_deactivation' ) );
 		add_action( 'init',                   array( &$this, 'init' ) );
 		add_action( 'plugins_loaded',         array( &$this, 'plugins_loaded' ) );
 		add_action( 'admin_enqueue_scripts',  array( &$this, 'admin_enqueue_scripts' ), 20 );
@@ -51,10 +52,26 @@ class HM_TOR_Plugin_Loader {
 		load_plugin_textdomain( self::I18N_DOMAIN, false, dirname( plugin_basename( __FILE__ ) ) . '/languages' );
 	}
 
-	function hm_tor_install() {
+	public static function plugin_activation( $network_wide ) {
 		if ( version_compare( get_bloginfo( 'version' ), '3.2', '<' ) ) {
 			deactivate_plugins( basename( __FILE__ ) ); // Deactivate this plugin
+			return;
 		}
+		trigger_error( 'TOR activated' );
+		$option = self::get_hm_tor_option();
+		if ( $option['schedule_enabled'] == 'enabled' && preg_match( '/^([0-9]{1,2}):([0-9]{2})$/', $option['del_at'], $matches )
+				&& filter_var( $option['del_older_than'], FILTER_VALIDATE_INT ) !== FALSE ) {
+			wp_schedule_event( self::get_timestamp_for_cron( $matches[1], $matches[2] ), 'daily', 'hm_tor_cron_hook', array( intval( $option['del_older_than'] ) ) );
+		}
+	}
+
+	public static function plugin_deactivation() {
+		$prev =self::get_hm_tor_option();
+		$timestamp = wp_next_scheduled( 'hm_tor_cron_hook',  array( intval( $prev['del_older_than'] ) ) );
+		if ( $timestamp !== false ) {
+			wp_unschedule_event( $timestamp, 'hm_tor_cron_hook', array( intval( $prev['del_older_than'] ) ) );
+		}
+		trigger_error( 'TOR deactivated' );
 	}
 
 	function admin_enqueue_scripts() {
@@ -216,7 +233,7 @@ class HM_TOR_Plugin_Loader {
 		}
 	}
 
-	function get_hm_tor_option( $key = NULL ) {
+	public static function get_hm_tor_option( $key = NULL ) {
 		$default_hm_tor_option = array(
 			'version'        => self::OPTION_VERSION,
 			'quick_edit'     => "off", // deprecated
@@ -270,11 +287,27 @@ class HM_TOR_Plugin_Loader {
 			$next = wp_next_scheduled("hm_tor_cron_hook", array( intval( $this->get_hm_tor_option( 'del_older_than' ) ) ) );
 			$t = time();
 			$diff = intval(($next - $t) / 60);
-			echo "<div>" .  __( "The task will begin after", self::I18N_DOMAIN ) . " " . $diff . __( "min.", self::I18N_DOMAIN ) .
-					" (gmt_offset = " . get_option( 'gmt_offset' ) . ")</div>";
+			$msg = sprintf( __( "The task will begin after %d min.", self::I18N_DOMAIN ), $diff );
+			echo "<div>" .  $msg . " (gmt_offset = " . get_option( 'gmt_offset' ) . ")</div>";
 
 		}
 	}
+
+	public static function get_timestamp_for_cron( $hour, $min ) {
+		$now = time();
+		$t = ceil( $now / 86400 ) * 86400 + ($hour - get_option( 'gmt_offset') )  * 3600 + $min * 60;
+
+		while ( $now < $t - 86400) {
+			$t -= 86400;
+		}
+
+		while ( $now > $t ) {
+			$t += 86400;
+		}
+		return $t;
+	}
+
+
 
 	function validate_options( $input ) {
 		$valid = array();
@@ -313,19 +346,7 @@ class HM_TOR_Plugin_Loader {
 
 			if ( $valid_conf_for_cron  ) {
 				$valid['schedule_enabled'] = 'enabled';
-
-				$now = time();
-				$t = ceil( $now / 86400 ) * 86400 + ($hour - get_option( 'gmt_offset') )  * 3600 + $min * 60;
-
-				while ( $now < $t - 86400) {
-					$t -= 86400;
-				}
-
-				while ( $now > $t ) {
-					$t += 86400;
-				}
-
-				wp_schedule_event( $t, 'daily', 'hm_tor_cron_hook', array( intval( $valid['del_older_than'] ) ) );
+				wp_schedule_event( self::get_timestamp_for_cron( $hour, $min ), 'daily', 'hm_tor_cron_hook', array( intval( $valid['del_older_than'] ) ) );
 			}
 		}
 
@@ -397,14 +418,13 @@ class HM_TOR_Plugin_Loader {
 	function delete_old_revisions( $days ) {
 		global $wpdb;
 
-		$revisions = $wpdb->get_results(
+		$revisions = $wpdb->get_results($wpdb->prepare(
 			"SELECT ID, post_parent, post_name
       FROM $wpdb->posts
-      WHERE post_type = 'revision' " .
-			"AND DATE_SUB(CURDATE(), INTERVAL " . $days . " DAY) >= post_date "
-			.
-			"ORDER BY post_parent, post_date DESC"
-		); // Both CURDATE and post_date are local time.
+      WHERE post_type = 'revision'
+			AND DATE_SUB(CURDATE(), INTERVAL %d DAY) >= post_date
+			ORDER BY post_parent, post_date DESC", $days
+		) ); // Both CURDATE and post_date are local time.
 
 		trigger_error( 'remove older than ' . $days);
 
@@ -433,7 +453,7 @@ class HM_TOR_Plugin_Loader {
 			wp_schedule_single_event( time(), 'hm_tor_cron_hook', array( intval($_REQUEST['days'] ) ) );
 			echo json_encode( array(
 				"result" => "success",
-				"msg"    => __( "The task is successfully started. ", self::I18N_DOMAIN ) .  '(' . esc_html( $_REQUEST['days'] ) . " " . __( 'days', self::I18N_DOMAIN ) . ")"
+				"msg"    => __( "The task is successfully started.", self::I18N_DOMAIN )
 			) );
 		}
 		else {
