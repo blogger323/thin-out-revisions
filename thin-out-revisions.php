@@ -57,7 +57,7 @@ class HM_TOR_Plugin_Loader {
 			deactivate_plugins( basename( __FILE__ ) ); // Deactivate this plugin
 			return;
 		}
-		trigger_error( 'TOR activated' );
+
 		$option = self::get_hm_tor_option();
 		if ( $option['schedule_enabled'] == 'enabled' && preg_match( '/^([0-9]{1,2}):([0-9]{2})$/', $option['del_at'], $matches )
 				&& filter_var( $option['del_older_than'], FILTER_VALIDATE_INT ) !== FALSE ) {
@@ -71,7 +71,6 @@ class HM_TOR_Plugin_Loader {
 		if ( $timestamp !== false ) {
 			wp_unschedule_event( $timestamp, 'hm_tor_cron_hook', array( intval( $prev['del_older_than'] ) ) );
 		}
-		trigger_error( 'TOR deactivated' );
 	}
 
 	function admin_enqueue_scripts() {
@@ -332,7 +331,7 @@ class HM_TOR_Plugin_Loader {
 		$valid['schedule_enabled'] = 'disabled';
 		$valid['del_at'] = $prev['del_at'];
 		if ( isset($input['schedule_enabled']) && $input['schedule_enabled'] == 'enabled' ) {
-
+			$hour = $min = 0;
 			if ( ! preg_match( '/^([0-9]{1,2}):([0-9]{2})$/', $input['del_at'], $matches ) ) {
 				add_settings_error( 'hm_tor_delete_old_revisions', 'hm-tor-del-at-error', __( 'Wrong time format.', self::I18N_DOMAIN ) );
 				$valid_conf_for_cron = false;
@@ -341,7 +340,6 @@ class HM_TOR_Plugin_Loader {
 				$valid['del_at'] = $input['del_at'];
 				$hour = $matches[1];
 				$min  = $matches[2];
-				trigger_error("INPUT -> " . $hour . ":" . $min);
 			}
 
 			if ( $valid_conf_for_cron  ) {
@@ -374,7 +372,8 @@ class HM_TOR_Plugin_Loader {
 							alert('<?php echo __( 'The day has to be an integer.', self::I18N_DOMAIN ); ?>');
 							return false;
 						}
-						if (!confirm('<?php echo __( "You really remove?", self::I18N_DOMAIN ); ?>')) {
+						if (!confirm('<?php echo __( "You really remove?", self::I18N_DOMAIN ); ?>' + ' (' + $('#hm_tor_del_older_than').val() + ' ' +
+						              '<?php echo __( 'days', self::I18N_DOMAIN ); ?>' + ')')) {
 							return false;
 						}
 						$('#hm_tor_rm_now_msg').html('<?php echo __( 'Processing ...', self::I18N_DOMAIN ); ?>');
@@ -423,10 +422,8 @@ class HM_TOR_Plugin_Loader {
       FROM $wpdb->posts
       WHERE post_type = 'revision'
 			AND DATE_SUB(CURDATE(), INTERVAL %d DAY) >= post_date
-			ORDER BY post_parent, post_date DESC", $days
+			ORDER BY post_parent, post_date DESC", ( $days - 1 )
 		) ); // Both CURDATE and post_date are local time.
-
-		trigger_error( 'remove older than ' . $days);
 
 		// COPY FROM
 		// refer wp_save_post_revision
@@ -440,8 +437,7 @@ class HM_TOR_Plugin_Loader {
 			}
 			else {
 				// delete revisions
-				// wp_delete_post_revision( $revision->ID );
-				trigger_error( $revision->ID . " removed.");
+				wp_delete_post_revision( $revision->ID );
 			}
 		}
 
