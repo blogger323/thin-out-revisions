@@ -34,6 +34,8 @@ class HM_TOR_Plugin_Loader {
 
 		add_action( 'admin_init', array( &$this, 'admin_init' ) );
 		add_action( 'admin_menu', array( &$this, 'admin_menu' ) );
+		add_action( 'admin_head', array( &$this, 'admin_head' ), 20 );
+
 	}
 
 	function init() {
@@ -71,6 +73,9 @@ class HM_TOR_Plugin_Loader {
 		if ( $timestamp !== false ) {
 			wp_unschedule_event( $timestamp, 'hm_tor_cron_hook', array( intval( $prev['del_older_than'] ) ) );
 		}
+
+		// TODO
+		// change to call wp_clear_scheduled_hook
 	}
 
 	function admin_enqueue_scripts() {
@@ -218,6 +223,18 @@ class HM_TOR_Plugin_Loader {
 		  array( &$this, 'settings_field_delete_old_revisions' ), 'hm_tor_option_page', 'hm_tor_main' );
 
 		register_setting( 'hm_tor_option_group', 'hm_tor_options', array( &$this, 'validate_options' ) );
+	}
+
+	function admin_head() {
+		// STYLE tag only for 3.6 or later
+?>
+<style>
+.comparing-two-revisions .revisions-controls {
+	height: 164px;
+}
+</style>
+<?php
+
 	}
 
 	function admin_notices() {
@@ -477,7 +494,6 @@ class HM_TOR_Plugin_Loader_3_5 extends HM_TOR_Plugin_Loader {
 		// replace the default 'pre_post_update' handler
 		remove_action( 'pre_post_update', 'wp_save_post_revision' );
 		add_action( 'pre_post_update', array( &$this, 'pre_post_update' ) );
-		add_action( 'admin_head',       array( &$this, 'admin_head' ), 20 );
 	}
 
 	function has_copy_revision() {
