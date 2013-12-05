@@ -232,6 +232,12 @@ class HM_TOR_Plugin_Loader {
 .comparing-two-revisions .revisions-controls {
 	height: 164px;
 }
+.comparing-two-revisions.pinned .revisions-controls {
+	height: 148px;
+}
+.comparing-two-revisions .revisions-tooltip {
+	bottom: 169px;
+}
 </style>
 <?php
 
