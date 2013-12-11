@@ -3,7 +3,7 @@
 Plugin Name: Thin Out Revisions
 Plugin URI: http://en.hetarena.com/thin-out-revisions
 Description: A plugin to thin out post/page revisions manually.
-Version: 1.4
+Version: 1.5
 Author: Hirokazu Matsui (blogger323)
 Author URI: http://en.hetarena.com/
 License: GPLv2
@@ -11,7 +11,7 @@ License: GPLv2
 
 
 class HM_TOR_Plugin_Loader {
-	const VERSION        = '1.4';
+	const VERSION        = '1.5';
 	const OPTION_VERSION = '1.4';
 	const OPTION_KEY     = 'hm_tor_options';
 	const I18N_DOMAIN    = 'thin-out-revisions';
@@ -109,7 +109,9 @@ class HM_TOR_Plugin_Loader {
 			'msg_remove_completed'     => esc_attr( __( 'The revision(s) removed.', self::I18N_DOMAIN ) ),
 			'msg_ajax_error'           => esc_attr( __( 'Error in communication with server', self::I18N_DOMAIN ) ),
 			'msg_nothing_to_remove'    => esc_attr( __( 'Nothing to remove.', self::I18N_DOMAIN ) ),
-			'msg_thin_out'             => esc_attr( __( 'Remove revisions between two revisions above', self::I18N_DOMAIN ) )
+			'msg_thin_out'             => esc_attr( __( 'Remove revisions between two revisions above', self::I18N_DOMAIN ) ),
+			'msg_processing'           => esc_attr( __( 'Processing...', self::I18N_DOMAIN ) ),
+			'msg_include_from'         => esc_attr( __( "Include the 'From' revision", self::I18N_DOMAIN ) )
 		);
 
 		if ( $this->page == 'revision.php' ) {
@@ -313,6 +315,7 @@ class HM_TOR_Plugin_Loader {
 			echo "<div>" .  $msg . " (gmt_offset = " . get_option( 'gmt_offset' ) . ")</div>";
 
 		}
+		echo "</fieldset>\n";
 	}
 
 	public static function get_timestamp_for_cron( $hour, $min ) {
