@@ -105,7 +105,7 @@ class HM_TOR_Plugin_Loader {
 			'ajaxurl'                  => admin_url( 'admin-ajax.php', isset( $_SERVER["HTTPS"] ) ? 'https' : 'http' ),
 			'latest_revision'          => $latest_revision,
 
-			'msg_thinout_comfirmation' => esc_attr( __( 'You really remove?', self::I18N_DOMAIN ) ),
+			'msg_thinout_comfirmation' => esc_attr( __( 'Do you really want to remove this?', self::I18N_DOMAIN ) ),
 			'msg_remove_completed'     => esc_attr( __( 'The revision(s) removed.', self::I18N_DOMAIN ) ),
 			'msg_ajax_error'           => esc_attr( __( 'Error in communication with server', self::I18N_DOMAIN ) ),
 			'msg_nothing_to_remove'    => esc_attr( __( 'Nothing to remove.', self::I18N_DOMAIN ) ),
@@ -398,11 +398,11 @@ class HM_TOR_Plugin_Loader {
 							alert('<?php echo __( 'The day has to be an integer.', self::I18N_DOMAIN ); ?>');
 							return false;
 						}
-						if (!confirm('<?php echo __( "You really remove?", self::I18N_DOMAIN ); ?>' + ' (' + $('#hm_tor_del_older_than').val() + ' ' +
+						if (!confirm('<?php echo __( "Do you really want to remove this?", self::I18N_DOMAIN ); ?>' + ' (' + $('#hm_tor_del_older_than').val() + ' ' +
 						              '<?php echo __( 'days', self::I18N_DOMAIN ); ?>' + ')')) {
 							return false;
 						}
-						$('#hm_tor_rm_now_msg').html('<?php echo __( 'Processing ...', self::I18N_DOMAIN ); ?>');
+						$('#hm_tor_rm_now_msg').html('<?php echo __( 'Processing...', self::I18N_DOMAIN ); ?>');
 						$.ajax({
 							url: '<?php echo admin_url( 'admin-ajax.php', isset( $_SERVER["HTTPS"] ) ? 'https' : 'http' ); ?>',
 							dataType: 'json',
@@ -610,8 +610,8 @@ class HM_TOR_Plugin_Loader_3_5 extends HM_TOR_Plugin_Loader {
 		$ajaxnonce = wp_create_nonce( self::PREFIX . "nonce" );
 		$ajaxurl   = admin_url( 'admin-ajax.php', isset( $_SERVER["HTTPS"] ) ? 'https' : 'http' );
 
-		$msg_confirm         = __( "You really remove?", self::I18N_DOMAIN );
-		$msg_process         = __( 'Processing ...', self::I18N_DOMAIN );
+		$msg_confirm         = __( "Do you really want to remove this?", self::I18N_DOMAIN );
+		$msg_process         = __( 'Processing...', self::I18N_DOMAIN );
 		$msg_info            = count( $posts2del ) > 0 ? __( 'Following revisions will be removed.', self::I18N_DOMAIN ) : "";
 		$msg_info2           = sprintf( __( "To change revisions to remove, you have to press &quot;%s&quot; button after selection.", self::I18N_DOMAIN ), __( 'Compare Revisions' ) );
 		$msg_error           = __( 'Error in communication with server', self::I18N_DOMAIN );
