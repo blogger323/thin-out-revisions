@@ -171,7 +171,7 @@ msgstr "Supprimer une révision &quot;%s&quot;"
 #, php-format
 #@ thin-out-revisions
 msgid "Once you return to <a href=\"%s\">the edit page</a>, you could continue working with revisions. Or reselect existing revisions and press &quot;%s&quot; button."
-msgstr "Une fois que vous revenez à <a href=\"%s\">la page d'édition</a>, vous pouvez continuer à travailler avec les révisions. Ou resélectionnez les révisions existantes et pressez la touche &quot;%s&quot."
+msgstr "Une fois que vous revenez à <a href=\"%s\">la page d'édition</a>, vous pouvez continuer à travailler avec les révisions. Ou resélectionnez les révisions existantes et pressez la touche &quot;%s&quot;."
 
 #: thin-out-revisions.php:597
 #: thin-out-revisions.php:616
