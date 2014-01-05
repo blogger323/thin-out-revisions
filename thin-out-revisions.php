@@ -6,6 +6,7 @@ Description: A plugin to thin out post/page revisions manually.
 Version: 1.5
 Author: Hirokazu Matsui (blogger323)
 Author URI: http://en.hetarena.com/
+Text Domain: thin-out-revisions
 License: GPLv2
 */
 
