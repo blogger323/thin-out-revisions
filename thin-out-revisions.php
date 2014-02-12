@@ -823,8 +823,9 @@ class HM_TOR_RevisionMemo_Loader {
 		$memo = ''; // always empty
 		echo __( "Memo: ", self::I18N_DOMAIN );
 		?>
-		<input type="text" name="hm_tor_memo" value="<?php echo esc_attr( $memo ); ?>" style="width: 300px;" />
+		<input type="text" name="hm_tor_memo" id="hm_tor_memo" value="<?php echo esc_attr( $memo ); ?>" style="width: 300px;" />
 		<span id="hm_tor_memo_current"></span>
+		<input id="hm_tor_copy_memo" type="button" class="button" value="<?php echo __( "Copy" ); ?>" style="margin: 0 10px">
 	<?php
 
 	}

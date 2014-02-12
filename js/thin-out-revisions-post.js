@@ -28,17 +28,24 @@
 					security: hm_tor_params.nonce
 				}
 			})
-					.success(function (response) {
+			.success(function (response) {
 				$(btn).parent().css('text-decoration', 'line-through');
 				$(btn).attr('disabled', 'disabled');
 				$(btn).attr('value', 'Deleted');
 			})
-					.error(function () {
+			.error(function () {
 				alert(hm_tor_params.msg_ajax_error);
 				$(btn).attr('value', 'Delete'); /* reset */
 			});
 
 			return false;
 		}); // '.tor-rm' click
+
+		$('#hm_tor_copy_memo').click(function () {
+			var new_memo = $('#hm_tor_memo_current').html().replace(/^ \[(.*)\]$/, "$1"); // one space...
+			$('#hm_tor_memo').val(new_memo);
+
+			return false;
+		}); // #hm_tor_copy_memo click
 	}); // ready
 })(jQuery, window, document);
