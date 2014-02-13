@@ -705,6 +705,9 @@ class HM_TOR_RevisionMemo_Loader {
 
 		// from WP3.6
 		add_filter( 'wp_save_post_revision_check_for_changes', array( &$this, 'wp_save_post_revision_check_for_changes' ), 200, 3 );
+
+		// load related modules
+		add_action( 'admin_enqueue_scripts',  array( &$this, 'admin_enqueue_scripts' ), 20 );
 	}
 
 	function admin_head() {
@@ -776,18 +779,27 @@ class HM_TOR_RevisionMemo_Loader {
 						jQuery(this).parent().next().append(' [' + memos[result[2]] + ']');
 						<?php
 								}
-								else {
+								else { // post.php
 						?>
-						jQuery(this).after(' [' + memos[result[2]] + ']');
+						jQuery(this).after('<span class="hm-tor-old-memo" id="hm-tor-memo-' + result[2] + '"> [' + memos[result[2]] + ']</span>');
 						<?php
 								}
 						?>
 					}
 				});
 
-				jQuery('#hm_tor_memo_current').html(' <?php if ($postmemo) { echo "[" . esc_js($postmemo) . "]"; } ?>');
+				jQuery('#hm-tor-memo-current').html(' <?php if ($postmemo) { echo "[" . esc_js($postmemo) . "]"; } ?>');
 			});
 		</script>
+<style>
+#hm-tor-memo-editor {
+	position: absolute;
+	top: 0;
+	left: 0;
+	background-color: #ffffff;
+	z-index: 90;
+}
+</style>
 	<?php
 	} // end of 'admin_head'
 
@@ -823,9 +835,9 @@ class HM_TOR_RevisionMemo_Loader {
 		$memo = ''; // always empty
 		echo __( "Memo: ", self::I18N_DOMAIN );
 		?>
-		<input type="text" name="hm_tor_memo" id="hm_tor_memo" value="<?php echo esc_attr( $memo ); ?>" style="width: 300px;" />
-		<span id="hm_tor_memo_current"></span>
-		<input id="hm_tor_copy_memo" type="button" class="button" value="<?php echo __( "Copy" ); ?>" style="margin: 0 10px">
+		<input type="text" name="hm_tor_memo" id="hm-tor-memo" value="<?php echo esc_attr( $memo ); ?>" style="width: 300px;" />
+		<span id="hm-tor-memo-current"></span>
+		<input id="hm-tor-copy-memo" type="button" class="button" value="<?php echo __( "Copy" ); ?>" style="margin: 0 10px">
 	<?php
 
 	}
@@ -885,6 +897,10 @@ class HM_TOR_RevisionMemo_Loader {
 		$this->last_revision_id = $last_revision->ID;
 
 		return $val;
+	}
+
+	function admin_enqueue_scripts() {
+		wp_enqueue_script( 'jquery-ui-position' );
 	}
 
 } // end of 'HM_TOR_RevisionMemo_Loader

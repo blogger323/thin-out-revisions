@@ -41,11 +41,42 @@
 			return false;
 		}); // '.tor-rm' click
 
-		$('#hm_tor_copy_memo').click(function () {
-			var new_memo = $('#hm_tor_memo_current').html().replace(/^ \[(.*)\]$/, "$1"); // one space...
-			$('#hm_tor_memo').val(new_memo);
+		// for Revision Memo
+		$('#hm-tor-copy-memo').click(function () {
+			var new_memo = $('#hm-tor-memo-current').html().replace(/^ \[(.*)\]$/, "$1"); // one space...
+			$('#hm-tor-memo').val(new_memo);
 
 			return false;
-		}); // #hm_tor_copy_memo click
+		}); // #hm-tor-copy-memo click
+
+		$('body').append('<div id="hm-tor-memo-editor"><input id="hm-tor-memo-input" type="text" /><input id="hm-tor-memo-input-ok" type="button" value="OK" /><input id="hm-tor-memo-input-cancel" type="button" value="Cancel" /></div>')
+		$('.hm-tor-old-memo').click(function () {
+			$('#hm-tor-memo-editor').show();
+			$('#hm-tor-memo-editor').position({
+				my: "left top",
+				at: "left top",
+				of: $(this)
+			});
+			$('#hm-tor-memo-input').val($(this).text().replace(/^ \[(.*)\]$/,"$1"));
+		});
+
+		$('.hm-tor-old-memo').hover(
+				function () {
+					$(this).css("cursor", "pointer");
+				},
+				function () {
+					$(this).css("cursor", "default");
+				}
+		);
+
+		$('#hm-tor-memo-input-ok').click(function () {
+			// TODO: ajax call
+		  $('#hm-tor-memo-editor').hide();
+		});
+
+		$('#hm-tor-memo-input-cancel').click(function () {
+			$('#hm-tor-memo-editor').hide();
+		});
+
 	}); // ready
 })(jQuery, window, document);
