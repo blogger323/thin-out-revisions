@@ -418,7 +418,7 @@ class HM_TOR_Plugin_Loader {
 							$('#hm_tor_rm_now_msg').html(response.msg);
 						})
 						.error (function() {
-							$('#hm_tor_rm_now_msg').html('<?php  __( 'Error in communication with server', self::I18N_DOMAIN ); ?>');
+							$('#hm_tor_rm_now_msg').html('<?php  echo __( 'Error in communication with server', self::I18N_DOMAIN ); ?>');
 						});
 
 						return false;
@@ -708,6 +708,9 @@ class HM_TOR_RevisionMemo_Loader {
 
 		// load related modules
 		add_action( 'admin_enqueue_scripts',  array( &$this, 'admin_enqueue_scripts' ), 20 );
+
+		// ajax for memo editing
+		add_action( 'wp_ajax_hm_tor_do_ajax_update_memo', array( &$this, 'do_ajax_update_memo' ) );
 	}
 
 	function admin_head() {
@@ -796,8 +799,17 @@ class HM_TOR_RevisionMemo_Loader {
 	position: absolute;
 	top: 0;
 	left: 0;
-	background-color: #ffffff;
+	background-color: #f4f4f4;
 	z-index: 90;
+	border: 1px solid #dadada;
+}
+
+#hm-tor-memo-editor input {
+	margin: 7px;
+}
+
+#hm-tor-memo-input {
+	width: 300px;
 }
 </style>
 	<?php
@@ -901,6 +913,35 @@ class HM_TOR_RevisionMemo_Loader {
 
 	function admin_enqueue_scripts() {
 		wp_enqueue_script( 'jquery-ui-position' );
+
+		// using parameters from HM_TOR_Plugin_Loader
+	}
+
+	function do_ajax_update_memo() {
+		if ( check_ajax_referer( self::PREFIX . "nonce", 'security', false ) ) {
+			// TODO: check permission
+			// TODO: check if 'revision' is digit.
+			if (update_metadata( 'post', $_REQUEST['revision'], '_hm_tor_memo', sanitize_text_field($_REQUEST['memo'])) !== false) {
+				echo json_encode( array(
+					"result" => "success",
+					"msg"    => __( "The memo is successfully updated.", self::I18N_DOMAIN )
+				) );
+			}
+			else {
+				echo json_encode( array(
+					"result" => "error",
+					"msg"    => __( "Failed to update the memo.", self::I18N_DOMAIN )
+				) );
+			}
+		}
+		else {
+			echo json_encode( array(
+				"result" => "error",
+				"msg"    => __( "Wrong session. Unable to process.", self::I18N_DOMAIN )
+			) );
+		}
+
+		die();
 	}
 
 } // end of 'HM_TOR_RevisionMemo_Loader
