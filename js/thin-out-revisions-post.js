@@ -51,9 +51,11 @@
 			return false;
 		}); // #hm-tor-copy-memo click
 
-		$('body').append('<div id="hm-tor-memo-editor"><input id="hm-tor-memo-input" type="text" /><input id="hm-tor-memo-input-ok" class="button" type="button" value="OK" /><input id="hm-tor-memo-input-cancel" class="button" type="button" value="Cancel" /></div>')
+		$('body').append('<div class="hm-tor-modal-background"><div id="hm-tor-memo-editor"><input id="hm-tor-memo-input" type="text" /><input id="hm-tor-memo-input-ok" class="button" type="button" value="OK" /><input id="hm-tor-memo-input-cancel" class="button" type="button" value="Cancel" /></div></div>')
+
 		$('.hm-tor-old-memo').click(function () {
 			$('#hm-tor-memo-editor').show();
+			$('.hm-tor-modal-background').show();
 			$('#hm-tor-memo-editor').position({
 				my: "left top",
 				at: "left top",
@@ -84,6 +86,7 @@
 				editor.css('cursor', 'default');
 				$('#hm-tor-memo-editor input').removeAttr('disabled');
 				editor.hide();
+				$('.hm-tor-modal-background').hide();
 			}
 
 			$.ajax({
@@ -118,6 +121,7 @@
 
 		$('#hm-tor-memo-input-cancel').click(function () {
 			$('#hm-tor-memo-editor').hide();
+			$('.hm-tor-modal-background').hide();
 		});
 
 	}); // ready

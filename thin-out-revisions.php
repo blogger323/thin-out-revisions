@@ -744,9 +744,11 @@ class HM_TOR_RevisionMemo_Loader {
 
 		$postmemo = get_post_meta( $post->ID, "_hm_tor_memo", true ); // keep this line for pre 3.6 posts
 
+		/*
 		if ( ! $memos && ! $postmemo ) {
 			return;
 		}
+		*/
 
 		$latest_revision = $this->get_latest_revision( $post->ID );
 
@@ -775,16 +777,19 @@ class HM_TOR_RevisionMemo_Loader {
 				jQuery('.post-revisions a').each(function () {
 					var parse_url = /(post|revision)=([0-9]+)/;
 					var result = parse_url.exec(jQuery(this).attr('href'));
-					if (result && memos[result[2]]) {
+					if (result) {
 						<?php
 								if ( $revision_php ) {
 						?>
-						jQuery(this).parent().next().append(' [' + memos[result[2]] + ']');
+						if (memos[result[2]]) {
+							jQuery(this).parent().next().append(' [' + memos[result[2]] + ']');
+						}
 						<?php
 								}
 								else { // post.php
 						?>
-						jQuery(this).after('<span class="hm-tor-old-memo" id="hm-tor-memo-' + result[2] + '"> [' + memos[result[2]] + ']</span>');
+						var memo = (typeof memos[result[2]] === 'undefined' ? '' : memos[result[2]]);
+						jQuery(this).after('<span class="hm-tor-old-memo" id="hm-tor-memo-' + result[2] + '"> [' + memo + ']</span>');
 						<?php
 								}
 						?>
@@ -800,8 +805,9 @@ class HM_TOR_RevisionMemo_Loader {
 	top: 0;
 	left: 0;
 	background-color: #f4f4f4;
-	z-index: 90;
+	z-index: 999;
 	border: 1px solid #dadada;
+	display: none;
 }
 
 #hm-tor-memo-editor input {
@@ -810,6 +816,14 @@ class HM_TOR_RevisionMemo_Loader {
 
 #hm-tor-memo-input {
 	width: 300px;
+}
+
+.hm-tor-modal-background {
+	position: fixed;
+	top: 0; left: 0; 	bottom: 0; right: 0;
+	background: none repeat scroll 0% 0% rgba(0, 0, 0, 0.10);
+	z-index: 998;
+	display: none;
 }
 </style>
 	<?php
