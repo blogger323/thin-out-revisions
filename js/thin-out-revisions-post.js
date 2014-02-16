@@ -78,17 +78,18 @@
 			var editor = $('#hm-tor-memo-editor');
 			var new_memo = $('#hm-tor-memo-input').val();
 
-			editor.css('cursor', 'wait');
+			editor.children().css('cursor', 'wait');
 			$('#hm-tor-memo-editor input').attr('disabled', 'disabled');
 
 			function reset_attr() {
 				// reset attributes
-				editor.css('cursor', 'default');
+				editor.children().css('cursor', 'default');
 				$('#hm-tor-memo-editor input').removeAttr('disabled');
 				editor.hide();
 				$('.hm-tor-modal-background').hide();
 			}
 
+			// execution
 			$.ajax({
 				url: hm_tor_params.ajaxurl,
 				dataType: 'json',
@@ -106,7 +107,7 @@
 					$('#hm-tor-memo-' + memo_edited).text( ' [' + new_memo + ']');
 				}
 				else {
-					alert(response.msgt);
+					alert(response.msg);
 				}
 
 				reset_attr();

@@ -3,7 +3,7 @@
 Plugin Name: Thin Out Revisions
 Plugin URI: http://en.hetarena.com/thin-out-revisions
 Description: A plugin for better revision management. Enables flexible management for you.
-Version: 1.5.2
+Version: 1.6-beta
 Author: Hirokazu Matsui (blogger323)
 Author URI: http://en.hetarena.com/
 Text Domain: thin-out-revisions
@@ -13,7 +13,7 @@ License: GPLv2
 
 
 class HM_TOR_Plugin_Loader {
-	const VERSION        = '1.5';
+	const VERSION        = '1.6';
 	const OPTION_VERSION = '1.4';
 	const OPTION_KEY     = 'hm_tor_options';
 	const I18N_DOMAIN    = 'thin-out-revisions';
@@ -744,12 +744,6 @@ class HM_TOR_RevisionMemo_Loader {
 
 		$postmemo = get_post_meta( $post->ID, "_hm_tor_memo", true ); // keep this line for pre 3.6 posts
 
-		/*
-		if ( ! $memos && ! $postmemo ) {
-			return;
-		}
-		*/
-
 		$latest_revision = $this->get_latest_revision( $post->ID );
 
 		if ( ! $postmemo && $latest_revision != 0 ) {
@@ -824,6 +818,10 @@ class HM_TOR_RevisionMemo_Loader {
 	background: none repeat scroll 0% 0% rgba(0, 0, 0, 0.10);
 	z-index: 998;
 	display: none;
+}
+
+.hm-tor-old-memo:hover {
+	color: #aeaeae;
 }
 </style>
 	<?php
@@ -933,15 +931,37 @@ class HM_TOR_RevisionMemo_Loader {
 
 	function do_ajax_update_memo() {
 		if ( check_ajax_referer( self::PREFIX . "nonce", 'security', false ) ) {
-			// TODO: check permission
-			// TODO: check if 'revision' is digit.
-			if (update_metadata( 'post', $_REQUEST['revision'], '_hm_tor_memo', sanitize_text_field($_REQUEST['memo'])) !== false) {
+
+			if (filter_var($_REQUEST['revision'], FILTER_VALIDATE_INT) === false) {
+				echo json_encode( array(
+						"result" => "error",
+						"msg"    => __( "Invalid revision number.", self::I18N_DOMAIN )
+				) );
+				die;
+			}
+
+			$parent = wp_is_post_revision($_REQUEST['revision']);
+			if ($parent === false) {
+				echo json_encode( array(
+						"result" => "error",
+						"msg"    => __( "Wrong revision ID.", self::I18N_DOMAIN )
+				) );
+			}
+			else if ( !current_user_can( 'edit_post', $parent ) ) {
+				// TODO: test a case of a page
+				echo json_encode( array(
+						"result" => "error",
+						"msg"    => __( "You seem not to have a permission to update revisions.", self::I18N_DOMAIN )
+				) );
+			}
+			else if (update_metadata( 'post', $_REQUEST['revision'], '_hm_tor_memo', sanitize_text_field($_REQUEST['memo'])) !== false) {
 				echo json_encode( array(
 					"result" => "success",
 					"msg"    => __( "The memo is successfully updated.", self::I18N_DOMAIN )
 				) );
 			}
 			else {
+				// TODO: exclude cases of same content
 				echo json_encode( array(
 					"result" => "error",
 					"msg"    => __( "Failed to update the memo.", self::I18N_DOMAIN )
