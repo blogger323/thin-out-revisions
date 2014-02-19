@@ -266,7 +266,7 @@ class HM_TOR_Plugin_Loader {
 			'bulk_edit'      => "off", // deprecated
 			'del_on_publish' => "off",
 			'del_older_than' => "90",
-			'schedule_enabled' => 'off',
+			'schedule_enabled' => 'disabled',
 			'del_at'         => "3:00",
 		);
 
@@ -1012,6 +1012,9 @@ class HM_TOR_RevisionMemo_Loader_3_5 extends HM_TOR_RevisionMemo_Loader {
 		return 0; // to indicate the version is 3.5
 	}
 }
+
+// I don't know why but I need make them global for unit tests
+global $hm_tor_plugin_loader, $hm_tor_revisionmemo_loader;
 
 $hm_tor_plugin_loader = null;
 $hm_tor_revisionmemo_loader = null;
