@@ -63,7 +63,7 @@ class HM_TOR_Plugin_Loader {
 		}
 
 		$option = self::get_hm_tor_option();
-		if ( $option['schedule_enabled'] == 'enabled' && preg_match( '/^([0-9]{1,2}):([0-9]{2})$/', $option['del_at'], $matches )
+		if ( $option['schedule_enabled'] == 'enabled' && preg_match( '/\A([0-9]{1,2}):([0-9]{2})\z/', $option['del_at'], $matches )
 				&& filter_var( $option['del_older_than'], FILTER_VALIDATE_INT ) !== FALSE ) {
 			wp_schedule_event( self::get_timestamp_for_cron( $matches[1], $matches[2] ), 'daily', 'hm_tor_cron_hook', array( intval( $option['del_older_than'] ) ) );
 		}
@@ -360,7 +360,7 @@ class HM_TOR_Plugin_Loader {
 		$valid['del_at'] = $prev['del_at'];
 		if ( isset($input['schedule_enabled']) && $input['schedule_enabled'] == 'enabled' ) {
 			$hour = $min = 0;
-			if ( ! preg_match( '/^([0-9]{1,2}):([0-9]{2})$/', $input['del_at'], $matches ) ) {
+			if ( ! preg_match( '/\A([0-9]{1,2}):([0-9]{2})\z/', $input['del_at'], $matches ) ) {
 				add_settings_error( 'hm_tor_delete_old_revisions', 'hm-tor-del-at-error', __( 'Wrong time format.', self::I18N_DOMAIN ) );
 				$valid_conf_for_cron = false;
 			}
