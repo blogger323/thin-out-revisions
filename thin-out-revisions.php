@@ -57,7 +57,7 @@ class HM_TOR_Plugin_Loader {
 	}
 
 	public static function plugin_activation( $network_wide ) {
-		if ( version_compare( get_bloginfo( 'version' ), '3.2', '<' ) ) {
+		if ( version_compare( get_bloginfo( 'version' ), '3.6', '<' ) ) {
 			deactivate_plugins( basename( __FILE__ ) ); // Deactivate this plugin
 			return;
 		}

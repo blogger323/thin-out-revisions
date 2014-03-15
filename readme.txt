@@ -2,7 +2,7 @@
 Contributors: blogger323
 Donate link: http://en.hetarena.com/donate
 Tags: revisions, revision, posts, admin
-Requires at least: 3.2
+Requires at least: 3.6
 Tested up to: 3.8
 Stable tag: 1.5.2
 License: GPLv2 or later
