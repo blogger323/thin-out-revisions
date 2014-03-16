@@ -457,6 +457,8 @@ class HM_TOR_Plugin_Loader {
 		// refer wp_save_post_revision
 		$parent = 0;
 		foreach ( $revisions as $revision ) {
+
+            // TODO: Better operation to avoid copy revisions which have same contents as current posts.
 			if ( $this->has_copy_revision() && $parent != $revision->post_parent &&
 					false !== strpos( $revision->post_name, "{$revision->post_parent}-revision" ) ) {
 				// avoid autosave
@@ -961,11 +963,18 @@ class HM_TOR_RevisionMemo_Loader {
 				) );
 			}
 			else {
-				// TODO: exclude cases of same content
-				echo json_encode( array(
-					"result" => "error",
-					"msg"    => __( "Failed to update the memo.", self::I18N_DOMAIN )
-				) );
+                if (get_metadata( 'post', $_REQUEST['revision'], '_hm_tor_memo', true ) == sanitize_text_field($_REQUEST['memo'])) {
+                    echo json_encode( array(
+                        "result" => "success",
+                        "msg"    => __( "No difference between old and new memos.", self::I18N_DOMAIN )
+                    ) );
+                }
+                else {
+                    echo json_encode( array(
+                        "result" => "error",
+                        "msg"    => __( "Failed to update the memo.", self::I18N_DOMAIN )
+                    ) );
+                }
 			}
 		}
 		else {
