@@ -34,7 +34,7 @@
 			if (confirm(hm_tor_params.msg_thinout_comfirmation) != true) {
 				return false;
 			}
-			$(btn).attr('value', 'Processing...')
+			$(btn).attr('value',  hm_tor_params.msg_processing);
 			$.ajax({
 				url     : hm_tor_params.ajaxurl,
 				dataType: 'json',
@@ -53,6 +53,7 @@
 				alert(hm_tor_params.msg_ajax_error);
 				$(btn).attr('value', 'Delete'); /* reset */
 			});
+            // TODO: i18n for 'Delete' and 'Deleted'
 
 			return false;
 		}); // '.tor-rm' click
