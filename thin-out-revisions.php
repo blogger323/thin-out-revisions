@@ -38,6 +38,8 @@ class HM_TOR_Plugin_Loader {
 		add_action( 'admin_menu', array( &$this, 'admin_menu' ) );
 		add_action( 'admin_head', array( &$this, 'admin_head' ), 20 );
 
+        add_filter( 'the_content', array( &$this, 'the_content' ), 20 );
+
 	}
 
 	function init() {
@@ -247,6 +249,39 @@ class HM_TOR_Plugin_Loader {
 
 	}
 
+    function the_content($text) {
+        global $wpdb, $post;
+
+
+        if ( (! is_single()) || is_front_page() ) {
+            return $text;
+        }
+
+
+        $foot = self::get_hm_tor_option( 'history_head' ) .
+            '<dl>';
+
+
+        $revisions = $wpdb->get_results($wpdb->prepare(
+"SELECT meta_value, post_date, user_login
+ FROM $wpdb->posts tp, $wpdb->postmeta tpm, $wpdb->users tu
+ WHERE post_type = 'revision'
+ AND tp.ID = tpm.post_id
+ AND tp.post_author = tu.ID
+ AND post_parent = %d
+ AND meta_key = %s
+ ORDER BY post_date DESC",  $post->ID , '_hm_tor_memo'
+        ) );
+        foreach ( $revisions as $revision ) {
+            // TODO: skip memos with '#' at the head
+            // TODO: dateformat
+            $foot .= '<dt>' . $revision->post_date . ' - ' . $revision->user_login . '</dt><dd>' . $revision->meta_value . "</dd>\n";
+        }
+        $foot .= '</dl>';
+
+        return $text . $foot;
+    }
+
 	function admin_notices() {
 		global $post;
 		$rev = wp_get_post_revisions( $post->ID );
@@ -268,6 +303,10 @@ class HM_TOR_Plugin_Loader {
 			'del_older_than' => "90",
 			'schedule_enabled' => 'disabled',
 			'del_at'         => "3:00",
+
+            'history_head' => '<hr /><h3>History</h3>',
+            'wp_footer_priority' => '20',
+            'default_action' => 'show',
 		);
 
 		// The get_option doesn't seem to merge retrieved values and default values.
