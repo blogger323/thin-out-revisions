@@ -11,10 +11,13 @@ Domain Path: /languages
 License: GPLv2
 */
 
+if ( ! class_exists( 'SimplePie' ) ) :
+  require ABSPATH . WPINC . '/class-simplepie.php';
+endif;
 
 class HM_TOR_Plugin_Loader {
-	const VERSION        = '1.6';
-	const OPTION_VERSION = '1.4';
+	const VERSION        = '1.7';
+	const OPTION_VERSION = '1.7';
 	const OPTION_KEY     = 'hm_tor_options';
 	const I18N_DOMAIN    = 'thin-out-revisions';
 	const PREFIX         = 'hm_tor_';
@@ -38,7 +41,9 @@ class HM_TOR_Plugin_Loader {
 		add_action( 'admin_menu', array( &$this, 'admin_menu' ) );
 		add_action( 'admin_head', array( &$this, 'admin_head' ), 20 );
 
-        add_filter( 'the_content', array( &$this, 'the_content' ), 20 );
+        if ( self::get_hm_tor_option('history_note') === 'on' ) {
+            add_filter( 'the_content', array( &$this, 'the_content' ), intval( self::get_hm_tor_option( 'history_note_priority' ) ) );
+        }
 
 	}
 
@@ -228,6 +233,9 @@ class HM_TOR_Plugin_Loader {
 		add_settings_field( 'hm_tor_delete_old_revisions', __( 'Delete revisions as old as or older than', self::I18N_DOMAIN ),
 		  array( &$this, 'settings_field_delete_old_revisions' ), 'hm_tor_option_page', 'hm_tor_main' );
 
+        add_settings_field( 'hm_tor_history_note', __( 'Show notes on posts', self::I18N_DOMAIN ),
+          array( &$this, 'settings_field_history_note' ), 'hm_tor_option_page', 'hm_tor_main' );
+
 		register_setting( 'hm_tor_option_group', 'hm_tor_options', array( &$this, 'validate_options' ) );
 	}
 
@@ -273,9 +281,9 @@ class HM_TOR_Plugin_Loader {
  ORDER BY post_date DESC",  $post->ID , '_hm_tor_memo'
         ) );
         foreach ( $revisions as $revision ) {
-            // TODO: skip memos with '#' at the head
-            // TODO: dateformat
-            $foot .= '<dt>' . $revision->post_date . ' - ' . $revision->user_login . '</dt><dd>' . $revision->meta_value . "</dd>\n";
+            if (substr($revision->meta_value, 0, 1) !== '#') {
+                $foot .= '<dt>' . mysql2date( get_option( 'date_format' ), $revision->post_date) . ' - ' . $revision->user_login . '</dt><dd>' . $revision->meta_value . "</dd>\n";
+            }
         }
         $foot .= '</dl>';
 
@@ -304,8 +312,9 @@ class HM_TOR_Plugin_Loader {
 			'schedule_enabled' => 'disabled',
 			'del_at'         => "3:00",
 
-            'history_head' => '<hr /><h3>History</h3>',
-            'wp_footer_priority' => '20',
+            'history_note' => 'off',
+            'history_head' => '<hr><h3>History</h3>',
+            'history_note_priority' => '20',
             'default_action' => 'show',
 		);
 
@@ -320,11 +329,11 @@ class HM_TOR_Plugin_Loader {
 
 	function settings_field( $key, $text ) {
 		$val = $this->get_hm_tor_option( $key );
-		echo "<fieldset><legend class='screen-reader-text'><span>" . $text . "</span></legend>\n";
-		echo "<label title='enable'><input type='radio' name='hm_tor_options[" . $key . "]' value='on' " .
+		echo "<fieldset><legend class='screen-reader-text'><span>" . esc_html($text) . "</span></legend>\n";
+		echo "<label title='enable'><input type='radio' name='hm_tor_options[" . esc_attr($key) . "]' value='on' " .
 				( $val == "on" ? "checked='checked'" : "" ) .
 				"/><span>On</span></label><br />\n";
-		echo "<label title='disable'><input type='radio' name='hm_tor_options[" . $key . "]' value='off' " .
+		echo "<label title='disable'><input type='radio' name='hm_tor_options[" . esc_attr($key) . "]' value='off' " .
 				( $val == "off" ? "checked='checked'" : "" ) .
 				"/><span>Off</span></label><br />\n";
 		echo "</fieldset>\n";
@@ -333,6 +342,49 @@ class HM_TOR_Plugin_Loader {
 	function settings_field_del_on_publish() {
 		$this->settings_field( 'del_on_publish', __( 'Delete all revisions on initial publication', self::I18N_DOMAIN ) );
 	}
+
+    function settings_field_history_note() {
+
+?>
+        <fieldset>
+            <legend class="screen-reader-text"><span><?php echo "Show notes"; ?></span></legend>
+            <p>
+                <label title='enable'><input type='radio' name='hm_tor_options[history_note]' value='on' <?php
+                    echo ( $this->get_hm_tor_option( 'history_note' ) == "on" ? "checked='checked'" : "" );
+                    ?>/><span>On</span></label>
+                <label title='disable'><input type='radio' name='hm_tor_options[history_note]' value='off' style="margin-left: 10px" <?php
+                    echo ( $this->get_hm_tor_option( 'history_note' ) == "off" ? "checked='checked'" : "" );
+                    ?>/><span>Off</span></label>
+            </p>
+            <p>
+                Hook Priority
+                <input class='small-text' id='hm_tor_history_note_priority' name='hm_tor_options[history_note_priority]' type='text' style="margin-left: 20px" value='<?php
+                echo esc_attr( $this->get_hm_tor_option( 'history_note_priority' ) );
+                ?>' />
+            </p>
+            <p>
+                Default Action
+                <label title='show'><input type='radio' name='hm_tor_options[default_action]' value='show' style="margin-left: 20px" <?php
+                    echo ( $this->get_hm_tor_option( 'default_action' ) == "show" ? "checked='checked'" : "" );
+                    ?>/><span>Show</span></label>
+                <label title='hide'><input type='radio' name='hm_tor_options[default_action]' value='hide' style="margin-left: 10px" <?php
+                    echo ( $this->get_hm_tor_option( 'default_action' ) == "hide" ? "checked='checked'" : "" );
+                    ?>/><span>Hide</span></label>
+            </p>
+            <p>
+                <label for="history_head">
+                    Header for Notes
+                </label>
+            </p>
+            <p>
+                <textarea name="hm_tor_options[history_head]" rows="10" cols="50" id="history_head" class="large-text code"><?php
+                    echo esc_html( $this->get_hm_tor_option( 'history_head' ) );
+                ?></textarea>
+            </p>
+        </fieldset>
+<?php
+
+    }
 
 	function settings_field_delete_old_revisions() {
 
@@ -395,6 +447,15 @@ class HM_TOR_Plugin_Loader {
 			$valid['del_older_than'] = $input['del_older_than'];
 		}
 
+        if ( filter_var( $input['history_note_priority'], FILTER_VALIDATE_INT ) === FALSE ) {
+            add_settings_error( 'hm_tor_history_note_priority', 'hm-tor-history-note-priority-error', __( 'The priority has to be an integer.', self::I18N_DOMAIN ) );
+            $valid['history_note_priority'] = $prev['history_note_priority'];
+            $valid_conf_for_cron = false;
+        }
+        else {
+            $valid['history_note_priority'] = $input['history_note_priority'];
+        }
+
 		$valid['schedule_enabled'] = 'disabled';
 		$valid['del_at'] = $prev['del_at'];
 		if ( isset($input['schedule_enabled']) && $input['schedule_enabled'] == 'enabled' ) {
@@ -418,6 +479,13 @@ class HM_TOR_Plugin_Loader {
 		$valid['quick_edit']     = ( ( isset($input['quick_edit']) && $input['quick_edit'] == "on" ) ? "on" : "off" );
 		$valid['bulk_edit']      = ( ( isset($input['bulk_edit']) && $input['bulk_edit'] == "on" ) ? "on" : "off" );
 		$valid['del_on_publish'] = ( ( isset($input['del_on_publish']) && $input['del_on_publish'] == "on" ) ? "on" : "off" );
+        $valid['history_note'] = ( ( isset($input['history_note']) && $input['history_note'] == "on" ) ? "on" : "off" );
+        $valid['default_action'] = ( ( isset($input['default_action']) && $input['default_action'] == "hide" ) ? "hide" : "show" );
+
+        // header for the history
+        $sps = new SimplePie_Sanitize();
+        $sps->strip_attributes( array('bgsound', 'expr', 'style', 'onclick', 'onerror', 'onfinish', 'onmouseover', 'onmouseout', 'onfocus', 'onblur', 'lowsrc', 'dynsrc') );
+        $valid['history_head'] = $sps->sanitize($input['history_head'], SIMPLEPIE_CONSTRUCT_HTML);
 
 		return $valid;
 	}
