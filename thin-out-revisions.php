@@ -265,6 +265,10 @@ class HM_TOR_Plugin_Loader {
             return $text;
         }
 
+        $show_history = get_post_meta($post->ID, "_hm_tor_show_history", true);
+        if ( $show_history == 'hide' || (self::get_hm_tor_option('default_action') == 'hide' && $show_history === '')) {
+            return $text;
+        }
 
         $foot = self::get_hm_tor_option( 'history_head' ) .
             '<dl>';
