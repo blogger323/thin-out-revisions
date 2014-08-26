@@ -233,7 +233,7 @@ class HM_TOR_Plugin_Loader {
 		add_settings_field( 'hm_tor_delete_old_revisions', __( 'Delete revisions as old as or older than', self::I18N_DOMAIN ),
 		  array( &$this, 'settings_field_delete_old_revisions' ), 'hm_tor_option_page', 'hm_tor_main' );
 
-        add_settings_field( 'hm_tor_history_note', __( 'Show notes on posts', self::I18N_DOMAIN ),
+        add_settings_field( 'hm_tor_history_note', __( 'Show memos on posts', self::I18N_DOMAIN ),
           array( &$this, 'settings_field_history_note' ), 'hm_tor_option_page', 'hm_tor_main' );
 
 		register_setting( 'hm_tor_option_group', 'hm_tor_options', array( &$this, 'validate_options' ) );
@@ -784,13 +784,42 @@ class HM_TOR_RevisionMemo_Loader {
 
 	function hm_tor_mbfunction( $post ) {
 		wp_nonce_field( plugin_basename( __FILE__ ), 'hm_tor_nonce' );
+
+        $show_history = get_post_meta( $post->ID, '_hm_tor_show_history', true );
+        if (! $show_history ) {
+            $show_history = HM_TOR_Plugin_Loader::get_hm_tor_option('default_action');
+        }
+
 		$memo = ''; // always empty
 		echo __( "Memo: ", self::I18N_DOMAIN );
-		?>
+	?>
+        <div>
 		<input type="text" name="hm_tor_memo" id="hm-tor-memo" value="<?php echo esc_attr( $memo ); ?>" style="width: 300px;" />
 		<span id="hm-tor-memo-current"></span>
 		<input id="hm-tor-copy-memo" type="button" class="button" value="<?php echo __( "Copy" ); ?>" style="margin: 0 10px">
+        </div>
+
+    <?php
+        if ( HM_TOR_Plugin_Loader::get_hm_tor_option('history_note') === 'on') {
+    ?>
+        <div style="margin: 10px 0">
+            <fieldset>
+                <legend class='screen-reader-text'><span><?php echo __( "Show Memos as a History: ", self::I18N_DOMAIN ); ?></span></legend>
+                <?php echo __( "Show Memos as a History: ", self::I18N_DOMAIN ); ?>
+                <label title="show" style="margin: 0 10px;">
+                    <input type='radio' name='hm_tor_show_history' id='hm-tor-show-history-show' value='show'
+                        <?php if ($show_history == 'show') { echo "checked='checked'"; } ?> />
+                    <span><?php echo __( "Show", self::I18N_DOMAIN );?></span>
+                </label>
+                <label title="hide">
+                    <input type='radio' name='hm_tor_show_history' id='hm-tor-show-history-hide' value='hide'
+                        <?php if ($show_history == 'hide') { echo "checked='checked'"; } ?> />
+                    <span><?php echo __( "Hide", self::I18N_DOMAIN );?></span>
+                </label>
+            </fieldset>
+        </div>
 	<?php
+        } // end of 'if ('
 
 	}
 
@@ -798,37 +827,43 @@ class HM_TOR_RevisionMemo_Loader {
 		global $wpdb;
 
 		if ( isset( $_POST['hm_tor_nonce'] ) && wp_verify_nonce( $_POST['hm_tor_nonce'], plugin_basename( __FILE__ ) ) &&
-				isset( $_POST['hm_tor_memo'] ) &&
 				( ( $_POST['post_type'] == 'post' && current_user_can( 'edit_post', $post_id ) )
 						|| ( $_POST['post_type'] == 'page' && current_user_can( 'edit_page', $post_id ) ) )
 		) {
-			if ( $parent = wp_is_post_revision( $post_id ) ) {
-				// saving a revision
+            if ( isset( $_POST['hm_tor_memo'] ) ) { // revision memo
+                if ( $parent = wp_is_post_revision( $post_id ) ) {
+                    // saving a revision
 
-				if ( $_POST['hm_tor_memo'] !== '' ) {
-					// We cannot use update_post_meta for revisions because it will add metadata to the parent.
-					update_metadata( 'post', $post_id, '_hm_tor_memo', sanitize_text_field( $_POST['hm_tor_memo'] ) );
-				}
-			}
-			else {
-				// saving a post
+                    if ( $_POST['hm_tor_memo'] !== '' ) {
+                        // We cannot use update_post_meta for revisions because it will add metadata to the parent.
+                        update_metadata( 'post', $post_id, '_hm_tor_memo', sanitize_text_field( $_POST['hm_tor_memo'] ) );
+                    }
+                }
+                else {
+                    // saving a post
 
-				if ($this->last_revision_id != 0) {
+                    if ($this->last_revision_id != 0) {
 
-					// for compatibility for WP3.5 and older.
-					$postmemo = get_post_meta( $post_id, '_hm_tor_memo', true);
-					if ( $postmemo ){
-						update_metadata( 'post', $this->last_revision_id, '_hm_tor_memo', $postmemo );
-						delete_post_meta( $post_id, '_hm_tor_memo' );
-					}
+                        // for compatibility for WP3.5 and older.
+                        $postmemo = get_post_meta( $post_id, '_hm_tor_memo', true);
+                        if ( $postmemo ){
+                            update_metadata( 'post', $this->last_revision_id, '_hm_tor_memo', $postmemo );
+                            delete_post_meta( $post_id, '_hm_tor_memo' );
+                        }
 
-					// If we have a new memo value, update the memo even no new revision is created.
-					if ( $this->no_new_revision && $_POST['hm_tor_memo'] !== '' ) {
-						// Attach the new memo to the latest revision
-						update_metadata( 'post', $this->last_revision_id, '_hm_tor_memo', sanitize_text_field( $_POST['hm_tor_memo'] ) );
-					}
-				}
-			}
+                        // If we have a new memo value, update the memo even no new revision is created.
+                        if ( $this->no_new_revision && $_POST['hm_tor_memo'] !== '' ) {
+                            // Attach the new memo to the latest revision
+                            update_metadata( 'post', $this->last_revision_id, '_hm_tor_memo', sanitize_text_field( $_POST['hm_tor_memo'] ) );
+                        }
+                    }
+                }
+            }
+
+            if ( isset( $_POST['hm_tor_show_history'] ) && ( ! wp_is_post_revision( $post_id ) ) ) {
+                update_post_meta( $post_id, '_hm_tor_show_history', $_POST['hm_tor_show_history'] == 'show' ? 'show' : 'hide' );
+            }
+
 		} // if ( isset ...
 	}
 
