@@ -3,7 +3,7 @@
 Plugin Name: Thin Out Revisions
 Plugin URI: http://en.hetarena.com/thin-out-revisions
 Description: A plugin for better revision management. Enables flexible management for you.
-Version: 1.6
+Version: 1.7
 Author: Hirokazu Matsui (blogger323)
 Author URI: http://en.hetarena.com/
 Text Domain: thin-out-revisions
@@ -275,7 +275,7 @@ class HM_TOR_Plugin_Loader {
 
 
         $revisions = $wpdb->get_results($wpdb->prepare(
-"SELECT meta_value, post_date, user_login
+"SELECT tpm.meta_value, tp.post_date, tu.user_nicename
  FROM $wpdb->posts tp, $wpdb->postmeta tpm, $wpdb->users tu
  WHERE post_type = 'revision'
  AND tp.ID = tpm.post_id
@@ -285,8 +285,8 @@ class HM_TOR_Plugin_Loader {
  ORDER BY post_date DESC",  $post->ID , '_hm_tor_memo'
         ) );
         foreach ( $revisions as $revision ) {
-            if (substr($revision->meta_value, 0, 1) !== '#') {
-                $foot .= '<dt>' . mysql2date( get_option( 'date_format' ), $revision->post_date) . ' - ' . $revision->user_login . '</dt><dd>' . $revision->meta_value . "</dd>\n";
+            if (trim($revision->meta_value) !== '' && substr($revision->meta_value, 0, 1) !== '#') {
+                $foot .= '<dt>' . mysql2date( get_option( 'date_format' ), $revision->post_date) . ' - ' . $revision->user_nicename . '</dt><dd>' . $revision->meta_value . "</dd>\n";
             }
         }
         $foot .= '</dl>';
