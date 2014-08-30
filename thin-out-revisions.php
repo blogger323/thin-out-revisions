@@ -271,7 +271,7 @@ class HM_TOR_Plugin_Loader {
         }
 
         $foot = self::get_hm_tor_option( 'history_head' ) .
-            '<dl>';
+            '<dl class="hm-tor-memo-list">';
 
 
         $revisions = $wpdb->get_results($wpdb->prepare(
