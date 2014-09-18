@@ -275,7 +275,7 @@ class HM_TOR_Plugin_Loader {
 
 
         $revisions = $wpdb->get_results($wpdb->prepare(
-"SELECT tpm.meta_value, tp.post_date, tu.user_nicename
+"SELECT tpm.meta_value, tp.post_date, tu.display_name
  FROM $wpdb->posts tp, $wpdb->postmeta tpm, $wpdb->users tu
  WHERE post_type = 'revision'
  AND tp.ID = tpm.post_id
@@ -286,7 +286,7 @@ class HM_TOR_Plugin_Loader {
         ) );
         foreach ( $revisions as $revision ) {
             if (trim($revision->meta_value) !== '' && substr($revision->meta_value, 0, 1) !== '#') {
-                $foot .= '<dt>' . mysql2date( get_option( 'date_format' ), $revision->post_date) . ' - ' . $revision->user_nicename . '</dt><dd>' . $revision->meta_value . "</dd>\n";
+                $foot .= '<dt>' . mysql2date( get_option( 'date_format' ), $revision->post_date) . ' - ' . $revision->display_name . '</dt><dd>' . $revision->meta_value . "</dd>\n";
             }
         }
         $foot .= '</dl>';
