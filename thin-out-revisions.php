@@ -114,14 +114,10 @@ class HM_TOR_Plugin_Loader {
 			'msg_include_from'         => esc_attr( __( "Include the 'From' revision", self::I18N_DOMAIN ) )
 		);
 
-		if ( $pagenow === 'revision.php' ) {
+		if ( $pagenow === 'revision.php' || $pagenow === 'post.php' ) {
 			// loading in footer
 			wp_enqueue_script( 'thin-out-revisions', plugins_url( '/js/thin-out-revisions.js', __FILE__ ), array( 'revisions' ), false, true );
 			wp_localize_script( 'thin-out-revisions', self::PREFIX . 'params', $params );
-		}
-		else if ( $pagenow === 'post.php' ) {
-			wp_enqueue_script( 'thin-out-revisions-post', plugins_url( '/js/thin-out-revisions-post.js', __FILE__ ), array(), false, true );
-			wp_localize_script( 'thin-out-revisions-post', self::PREFIX . 'params', $params );
 		}
 
 	}
