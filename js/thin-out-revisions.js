@@ -13,6 +13,42 @@
 
  for the revision screen (wp-admin/revision.php)
  */
+/*
+ -------------------------------------------
+ CSS classes and IDs (under construction)
+
+[Basic]
+ #tor-delete-oldest
+   A checkbox to indicate if delete the From revision.
+
+ #tor-thin-out
+   A button to execute deletion
+
+ #tor-msg
+   A message area
+
+ #tor-rm-N
+   A button to delete a spesified revision
+
+ .tor-rm
+   Buttons
+
+ #hm-tor-copy-memo
+ #hm-tor-memo-current
+
+[for Memo Editor]
+ .hm-tor-modal-background
+ #hm-tor-memo-editor
+ #hm-tor-memo-input
+ #hm-tor-memo-input-ok
+ #hm-tor-memo-input-cannel
+
+
+[For memo editing (Attach following classes and ID)]
+ .hm-tor-old-memo
+ #hm-tor-memo-N
+
+ */
 
 (function ($, window, document, undefined) {
 
@@ -83,7 +119,7 @@
          */
         $('body').append('<div class="hm-tor-modal-background"><div id="hm-tor-memo-editor"><input id="hm-tor-memo-input" type="text" /><input id="hm-tor-memo-input-ok" class="button" type="button" value="OK" /><input id="hm-tor-memo-input-cancel" class="button" type="button" value="Cancel" /></div></div>');
 
-        $('.hm-tor-old-memo').click(function () {
+         $('body').on("click", ".hm-tor-old-memo", function () {
             $('#hm-tor-memo-editor').show();
             $('.hm-tor-modal-background').show();
             $('#hm-tor-memo-editor').position({
@@ -91,19 +127,13 @@
                 at: "left top",
                 of: $(this)
             });
-            $('#hm-tor-memo-input').val($(this).text().replace(/^ \[(.*)\]$/,"$1"));
+            $('#hm-tor-memo-input').val($(this).text().replace(/^ *\[(.*)\]$/,"$1"));
             $('#hm-tor-memo-input').focus();
             memo_edited = $(this).attr('id').replace(/hm-tor-memo-/, '');
         });
 
-        $('.hm-tor-old-memo').hover(
-            function () {
-                $(this).css("cursor", "pointer");
-            },
-            function () {
-                $(this).css("cursor", "default");
-            }
-        );
+        $('body').on("mouseenter", ".hm-tor-old-memo", function() { $(this).css("cursor", "pointer"); });
+        $('body').on("mouseleave", ".hm-tor-old-memo", function() { $(this).css("cursor", "default"); });
 
         $('#hm-tor-memo-input-ok').click(function () {
             edit_ok();
@@ -217,13 +247,13 @@
                                 if (fromid && typeof(memos) !== 'undefined' && memos[fromid]) {
                                     var $f = $('.diff-meta-from .diff-title');
                                     if (!/\[/.test($f.text())) { // avoid duplicated memos
-                                        $f.append('[' + memos[fromid] + ']');
+                                        $f.append('<div class="hm-tor-old-memo" id="hm-tor-memo-' + fromid + '">[' + memos[fromid] + ']</div>');
                                     }
                                 }
                                 if (toid && typeof(memos) !== 'undefined' && memos[toid]) {
                                     var $t = $('.diff-meta-to .diff-title');
                                     if (!/\[/.test($t.text())) {
-                                        $t.append('[' + memos[toid] + ']');
+                                        $t.append('<div class="hm-tor-old-memo" id="hm-tor-memo-' + toid + '">[' + memos[toid] + ']</div>');
                                     }
                                 }
                                 return this;

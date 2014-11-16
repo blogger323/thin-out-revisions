@@ -116,7 +116,7 @@ class HM_TOR_Plugin_Loader {
 
 		if ( $pagenow === 'revision.php' || $pagenow === 'post.php' ) {
 			// loading in footer
-			wp_enqueue_script( 'thin-out-revisions', plugins_url( '/js/thin-out-revisions.js', __FILE__ ), array( 'revisions' ), false, true );
+			wp_enqueue_script( 'thin-out-revisions', plugins_url( '/js/thin-out-revisions.js', __FILE__ ), array('jquery-ui-position', 'revisions'), false, true );
 			wp_localize_script( 'thin-out-revisions', self::PREFIX . 'params', $params );
 		}
 
