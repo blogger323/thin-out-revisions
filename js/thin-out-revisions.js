@@ -50,6 +50,8 @@
 
  */
 
+// TODO using the minimized version
+
 (function ($, window, document, undefined) {
 
 	$(document).ready(function () {
@@ -64,6 +66,7 @@
             }
         }); // '.post-revisions a' each
 
+        // clicked button to remove a single revision
         $('.tor-rm').click(function () {
             var rev = $(this).attr("id");
             var btn = this; // we need to reserve this
@@ -185,7 +188,11 @@
 
                 if (response.result == 'success') {
                     // set memo
-                    $('#hm-tor-memo-' + memo_edited).text( ' [' + new_memo + ']');
+                    $('#hm-tor-memo-' + memo_edited).text( '[' + new_memo + ']');
+
+                    if (typeof hm_tor_memos !== 'undefined') {
+                        hm_tor_memos[memo_edited] = new_memo;
+                    }
                 }
                 else {
                     alert(response.msg);
@@ -244,16 +251,16 @@
 
                                 var fromid = (this.model.get('from') ? this.model.get('from').get('id') : '');
                                 var toid = (this.model.get('to') ? this.model.get('to').get('id') : '');
-                                if (fromid && typeof(memos) !== 'undefined' && memos[fromid]) {
+                                if (fromid && typeof(hm_tor_memos) !== 'undefined' && hm_tor_memos[fromid]) {
                                     var $f = $('.diff-meta-from .diff-title');
                                     if (!/\[/.test($f.text())) { // avoid duplicated memos
-                                        $f.append('<div class="hm-tor-old-memo" id="hm-tor-memo-' + fromid + '">[' + memos[fromid] + ']</div>');
+                                        $f.append('<div class="hm-tor-old-memo" id="hm-tor-memo-' + fromid + '">[' + hm_tor_memos[fromid] + ']</div>');
                                     }
                                 }
-                                if (toid && typeof(memos) !== 'undefined' && memos[toid]) {
+                                if (toid && typeof(hm_tor_memos) !== 'undefined' && hm_tor_memos[toid]) {
                                     var $t = $('.diff-meta-to .diff-title');
                                     if (!/\[/.test($t.text())) {
-                                        $t.append('<div class="hm-tor-old-memo" id="hm-tor-memo-' + toid + '">[' + memos[toid] + ']</div>');
+                                        $t.append('<div class="hm-tor-old-memo" id="hm-tor-memo-' + toid + '">[' + hm_tor_memos[toid] + ']</div>');
                                     }
                                 }
                                 return this;

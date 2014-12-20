@@ -3,7 +3,7 @@
 Plugin Name: Thin Out Revisions
 Plugin URI: http://en.hetarena.com/thin-out-revisions
 Description: A plugin for better revision management. Enables flexible management for you.
-Version: 1.7.2
+Version: 1.8
 Author: Hirokazu Matsui (blogger323)
 Author URI: http://en.hetarena.com/
 Text Domain: thin-out-revisions
@@ -16,7 +16,7 @@ if ( ! class_exists( 'SimplePie' ) ) :
 endif;
 
 class HM_TOR_Plugin_Loader {
-	const VERSION        = '1.7.2';
+	const VERSION        = '1.8';
 	const OPTION_VERSION = '1.7';
 	const OPTION_KEY     = 'hm_tor_options';
 	const I18N_DOMAIN    = 'thin-out-revisions';
@@ -665,7 +665,7 @@ class HM_TOR_RevisionMemo_Loader {
 
 		?>
 		<script type='text/javascript'>
-			var memos = {
+			var hm_tor_memos = {
 				<?php
 				    $has_latest = false;
 						foreach ($memos as $m) {
@@ -683,23 +683,10 @@ class HM_TOR_RevisionMemo_Loader {
 			jQuery(document).ready(function () {
 				jQuery('.post-revisions a').each(function () {
 					var parse_url = /(post|revision)=([0-9]+)/;
-					var result = parse_url.exec(jQuery(this).attr('href'));
+					var result = parse_url.exec(jQuery(this).attr('href')); // will be found only in post.php
 					if (result) {
-						<?php
-								if ( $revision_php ) {
-						?>
-						if (memos[result[2]]) {
-							jQuery(this).parent().next().append(' [' + memos[result[2]] + ']');
-						}
-						<?php
-								}
-								else { // post.php
-						?>
-						var memo = (typeof memos[result[2]] === 'undefined' ? '' : memos[result[2]]);
-						jQuery(this).after('<span class="hm-tor-old-memo" id="hm-tor-memo-' + result[2] + '"> [' + memo + ']</span>');
-						<?php
-								}
-						?>
+						var memo = (typeof hm_tor_memos[result[2]] === 'undefined' ? '' : hm_tor_memos[result[2]]);
+						jQuery(this).after(' <span class="hm-tor-old-memo" id="hm-tor-memo-' + result[2] + '">[' + memo + ']</span>');
 					}
 				});
 
