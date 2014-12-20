@@ -251,6 +251,9 @@
 
                                 var fromid = (this.model.get('from') ? this.model.get('from').get('id') : '');
                                 var toid = (this.model.get('to') ? this.model.get('to').get('id') : '');
+
+                                // Fixme: show '[]' for empty strings.
+                                // Fixme: wider clickable area for the editor
                                 if (fromid && typeof(hm_tor_memos) !== 'undefined' && hm_tor_memos[fromid]) {
                                     var $f = $('.diff-meta-from .diff-title');
                                     if (!/\[/.test($f.text())) { // avoid duplicated memos
