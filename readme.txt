@@ -107,6 +107,9 @@ So some options became needless.
 
 == Changelog ==
 
+= 1.8.1 - 2015 =
+* Custom post type support.
+
 = 1.8 - Dec 20, 2014 =
 * Now you can use the memo editor also in the revision comparison screen.
 * WordPress 4.1 compatible.
