@@ -118,7 +118,9 @@ class HM_TOR_Plugin_Loader {
 			'msg_nothing_to_remove'    => esc_attr( __( 'Nothing to remove.', self::I18N_DOMAIN ) ),
 			'msg_thin_out'             => esc_attr( __( 'Remove revisions between two revisions above', self::I18N_DOMAIN ) ),
 			'msg_processing'           => esc_attr( __( 'Processing...', self::I18N_DOMAIN ) ),
-			'msg_include_from'         => esc_attr( __( "Include the 'From' revision", self::I18N_DOMAIN ) )
+			'msg_include_from'         => esc_attr( __( "Include the 'From' revision", self::I18N_DOMAIN ) ),
+			'msg_delete'               => esc_attr( __( 'Delete' ) ),
+			'msg_deleted'              => esc_attr( __( 'Deleted' ) )
 		);
 
 		if ( $pagenow === 'revision.php' || $pagenow === 'post.php' ) {
@@ -898,13 +900,19 @@ class HM_TOR_RevisionMemo_Loader {
 			}
 
 			$parent = wp_is_post_revision($_REQUEST['revision']);
+			if ($parent) {
+				$post_type = get_post_type($parent);
+				$post_type_object = get_post_type_object($post_type);
+			}
+
 			if ($parent === false) {
 				echo json_encode( array(
 						"result" => "error",
 						"msg"    => __( "Wrong revision ID.", self::I18N_DOMAIN )
 				) );
 			}
-			else if ( !current_user_can( 'edit_post', $parent ) ) {
+			else if ( ( $post_type_object->capability_type == 'post' && !current_user_can( 'edit_post', $parent ) ) ||
+				       ( $post_type_object->capability_type == 'page' && !current_user_can( 'edit_page', $parent ) ) ) {
 				echo json_encode( array(
 						"result" => "error",
 						"msg"    => __( "You seem not to have a permission to update revisions.", self::I18N_DOMAIN )
@@ -944,7 +952,7 @@ class HM_TOR_RevisionMemo_Loader {
 } // end of 'HM_TOR_RevisionMemo_Loader
 
 
-// I don't know why but I need make them global for unit tests
+// for unit tests
 global $hm_tor_plugin_loader, $hm_tor_revisionmemo_loader;
 
 // Load HM_TOR_Plugin_Loader first.
