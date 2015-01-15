@@ -241,7 +241,7 @@ msgstr "<hr><h3>Historique</h3>"
 #: thin-out-revisions.php:351
 #@ thin-out-revisions
 msgid "Hook Priority"
-msgstr "Priorité"
+msgstr "Priorité du mémo"
 
 #: thin-out-revisions.php:357
 #@ thin-out-revisions
